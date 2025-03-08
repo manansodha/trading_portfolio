@@ -1,0 +1,53 @@
+/* Centering and Styling the Login Page */
+.login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 75vh;
+    background-color: #f4f4f4;
+  }
+  
+  /* Login Box */
+  .login-box {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+  }
+  
+  /* Form Styling */
+  .login-box h2 {
+    margin-bottom: 20px;
+    color: #333;
+  }
+  
+  /* Login Button */
+  .login-btn {
+    margin-top: 15px;
+  }
+  
+  /* Message Styling */
+  .message {
+    margin-top: 15px;
+    font-size: 14px;
+    color: red;
+  }
+  
+  /* Register Link */
+  .register-link {
+    margin-top: 10px;
+    font-size: 14px;
+  }
+  
+  .register-link a {
+    color: #007bff;
+    text-decoration: none;
+  }
+  
+  .register-link a:hover {
+    text-decoration: underline;
+  }
+  

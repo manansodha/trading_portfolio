@@ -11,7 +11,7 @@ const getStockDetails = require('./src/routes/portfolioRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 
 const app = express();
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+app.use(cors({ origin: process.env.FRONTEND, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 dotenv.config();

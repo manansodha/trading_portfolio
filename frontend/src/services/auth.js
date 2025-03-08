@@ -4,7 +4,7 @@ import { api, setAuthToken } from './api';
 const auth = {
   login: async (credentials) => {
     try {
-      const response = await api.post('http://localhost:3001/api/auth/login', credentials);
+      const response = await api.post(`${process.env.REACT_APP_API_URL}/api/auth/login`, credentials);
       setAuthToken(response.token);
       console.log(response);
       return response.data;

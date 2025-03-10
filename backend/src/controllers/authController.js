@@ -145,7 +145,7 @@ exports.register = async (req, res) => {
                 trade_type NOT NULL default 'dividend',
                 quantity INT DEFAULT 0,
                 dividend_per_share DECIMAL(10,2) DEFAULT 0.00,
-                Primary Key (id, date, symbol)
+                Primary Key (date, symbol, dividend_per_share)
             )
         `;
     await db.execute(createTableQuery2);

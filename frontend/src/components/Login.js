@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TextField,
@@ -38,6 +38,10 @@ const Login = () => {
       setMessage(error.message);
     }
   };
+
+  useEffect(() => {
+    document.title = "Login - Trading Portfolio"; // Change tab name
+}, []);
 
   return (
     <div className="login-container">

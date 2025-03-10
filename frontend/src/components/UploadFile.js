@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { uploadDividends } from '../services/api';
@@ -14,6 +14,10 @@ export default function UploadFile() {
     const navigate = useNavigate();
 
     const handleFileChange = (e) => setFile(e.target.files[0]);
+
+    useEffect(() => {
+        document.title = "Upload Trade/Dividend"; // Change tab name
+    }, []);
 
     const handleUpload = async () => {
         if (!file) {

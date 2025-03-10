@@ -64,6 +64,23 @@ export const getStockDetails = async (symbol, username) => {
   }
 };
 
+export const temporaryXIRR = async (data) =>{
+  try{
+    const controller = new AbortController(); 
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    const response = await axios.post(`${API_BASE_URL}/api/portfolio/temporaryXIRR`, {data}, {headers: { "Content-Type": "application/json" },
+      signal: controller.signal, })
+      
+    clearTimeout(timeoutId);  
+    return response;
+  }
+  catch(error){
+    console.error("Error getting XIRR", error.response?.data || error.message);
+    throw error;
+  }
+}
+
 export const addTrade = async (tradeData) => {
   try {
     const controller = new AbortController(); 

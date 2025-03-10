@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getStockDetails, addTrade, deleteTrade} from '../services/api';
+import { getStockDetails, addTrade, deleteTrade, temporaryXIRR} from '../services/api';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -24,10 +24,17 @@ import {
 
 export default function StockDetails() {
     const { symbol } = useParams();
+    
+    // Trade fetch values
     const [trades, setTrades] = useState([]);
     const [totalQuantity, setTotalQuantity] = useState(0);
     const [totalPnL, setTotalPnL] = useState(0);
+    const [totalCost, setTotalCost] = useState(0);
+    const [totalDividend, setTotalDividend] = useState(0);
+    const [totalRG, setTotalRG] = useState(0);
     const [xirr, setXirr] = useState(null);
+    
+    
     const { user } = useAuth();
     const navigate = useNavigate();
     const username = String(user?.username);
@@ -38,7 +45,16 @@ export default function StockDetails() {
     const [quantity, setQuantity] = useState("");
     const [price, setPrice] = useState("");
     const [tradeDate, setTradeDate] = useState("");
-    
+
+    // Temporary XIRR Calculation state
+    const [sellPrice, setSellPrice] = useState("");
+    const [sellDate, setSellDate] = useState("");
+    const [tempXirrResult, setTempXirrResult] = useState(null);
+    const [openXIRR, setOpenXIRR] = useState(false)
+     
+    useEffect(() => {
+        document.title = symbol; // Change tab name
+    }, []);
 
     useEffect(() => {
         if (!username) {
@@ -58,6 +74,9 @@ export default function StockDetails() {
                 }
                 setTotalPnL(response.data.total_pnl ?? 0);
                 setTotalQuantity(response.data.total_quantity ?? 0);
+                setTotalCost(response.data.total_cost ?? 0);
+                setTotalDividend(response.data.total_dividend ?? 0);
+                setTotalRG(response.data.total_rg ?? 0);
                 setXirr(response.data.xirr ?? null);
             })
             .catch(error => {
@@ -117,6 +136,36 @@ export default function StockDetails() {
         }
     };
 
+    // Function to calculate temporary XIRR
+    const handleCalculateXirr = async () => {
+        if (!sellPrice || !sellDate) {
+            alert("Please enter sell price and date");
+            return;
+        }
+        const sellData = {
+            username,
+            symbol,
+            sellPrice,
+            sellDate
+        }
+
+        try {
+            const response = await temporaryXIRR(sellData);
+            setTempXirrResult(response.data);
+        } catch (error) {
+            console.error("Error calculating XIRR:", error);
+            alert("Failed to calculate XIRR");
+        }
+    };
+
+    // Reset XIRR simulation
+    const handleResetXirr = () => {
+        setSellPrice("");
+        setSellDate("");
+        setTempXirrResult(null);
+        setOpenXIRR(false)
+    };
+
 
     return (
         <Box sx={{ p: 3, fontFamily: "Arial, sans-serif" }}>
@@ -134,11 +183,28 @@ export default function StockDetails() {
             </Typography>
 
             {/* Summary Details */}
-            <Box sx={{ mt: 2, mb: 3, p: 2, border: "1px solid #ddd", borderRadius: "8px", backgroundColor: "#f9f9f9" }}>
-                <Typography variant="h6">Total Quantity: {totalQuantity}</Typography>
-                <Typography variant="h6" sx={{ color: totalPnL >= 0 ? "green" : "red" }}>
-                    Total P&L: ₹{totalPnL}
-                </Typography>
+            <Box sx={{ mt: 2, mb: 3, p: 2, display: 'flex', justifyContent: 'space-between', border: "1px solid #ddd", borderRadius: "8px", backgroundColor: "#f9f9f9" }}>
+                <Box sx={{display: 'flex', flexDirection: 'column'}}>
+                    {totalQuantity !== 0 ? (
+                        <Typography variant="h6" sx={{ color: totalPnL >= 0 ? "green" : "red" }}>
+                            Total Realised Gains: ₹{totalRG}
+                        </Typography>
+                    ) : (
+                        <Typography variant="h6" sx={{ color: totalPnL >= 0 ? "green" : "red" }}>
+                            Total PnL: ₹{totalPnL}
+                        </Typography>
+                    )}
+                    
+                    <Typography variant="h6" >
+                        Total Cost: ₹{totalCost}
+                    </Typography>
+                    <Typography variant="h6" >
+                        Dividend Earned: ₹{totalDividend}
+                    </Typography>
+                </Box>
+
+                <Box sx={{display: 'flex', flexDirection: 'column'}}>
+                <Typography variant="h6">Remaining Quantity: {totalQuantity}</Typography>
                 {xirr !== null ? (
                     <Typography variant="h6" sx={{ color: "blue" }}>
                         XIRR: {(xirr)}%
@@ -148,7 +214,11 @@ export default function StockDetails() {
                         Insufficient data for XIRR
                     </Typography>
                 )}
-                
+                {totalQuantity !==0 ?
+                    (<Button variant="contained" align='right' color="primary" onClick={() => setOpenXIRR(true)}>
+                        Check Temporary XIRR
+                    </Button>):(null)}
+                </Box>
             </Box>
 
 
@@ -190,8 +260,10 @@ export default function StockDetails() {
                     </TableBody>
                 </Table>
             </TableContainer>
+                    
+                {/* Add Trade Box */}
                 <Dialog open={open} onClose={() => setOpen(false)}>
-                <DialogTitle>Add Stock Manually
+                <DialogTitle>Add Manually
                 <DialogContent>
                     <Typography variant="h6">Add Trade</Typography>
                     <TextField label="Date" type="date" value={tradeDate} onChange={(e) => setTradeDate(e.target.value)} fullWidth margin="normal" InputLabelProps={{ shrink: true }} />
@@ -204,10 +276,43 @@ export default function StockDetails() {
                     <TextField label="Price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} fullWidth margin="normal" />
                 </DialogContent>
                 <DialogActions>    
-                    <Button variant="contained" color="primary" onClick={handleAddTrade} fullWidth>
+                    <Button variant="outlined" color="error" onClick={() => setOpen(false)}>
+                        Close
+                    </Button>
+                    <Button variant="contained" color="primary" onClick={handleAddTrade} >
                         Add Trade
                     </Button>
                 </DialogActions>
+                </DialogTitle>
+                </Dialog>
+
+
+
+                {/* Temporary XIRR Box */}
+                <Dialog open={openXIRR} onClose={() => setOpenXIRR(false)}>
+                <DialogTitle>Check XIRR
+                <DialogContent>
+                    <Typography variant="h6">Add Trade</Typography>
+                    <TextField label="Date" type="date" value={sellDate} onChange={(e) => setSellDate(e.target.value)} fullWidth margin="normal" InputLabelProps={{ shrink: true }} />                   
+                    <TextField label="Price" type="number" value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} fullWidth margin="normal" />
+                    <TextField label="Quantity" type="number" value={totalQuantity} disabled fullWidth margin="normal" />
+                </DialogContent>
+                <DialogActions>    
+                    <Button variant="outlined" color="error" onClick={handleResetXirr}>
+                        Close
+                    </Button>
+                    <Button variant="contained" color="primary" onClick={handleCalculateXirr} >
+                        Check
+                    </Button>
+                </DialogActions>
+                    {tempXirrResult && (
+                        <Box sx={{ mt: 2, p: 2, border: "1px solid #ccc", borderRadius: "8px", backgroundColor: "#fff" }}>
+                            <Typography variant="h6">Results:</Typography>
+                            <Typography>Total Realisation: ₹{tempXirrResult.total_realisation}</Typography>
+                            <Typography sx={{color: tempXirrResult.profit >=0 ? "green" : "red"}}>Profit: ₹{tempXirrResult.profit}</Typography>
+                            <Typography>New XIRR: {tempXirrResult.new_xirr ? `${tempXirrResult.new_xirr}%` : "Insufficient Data"}</Typography>
+                        </Box>
+                    )}
                 </DialogTitle>
                 </Dialog>
         </Box>

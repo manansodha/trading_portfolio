@@ -4,7 +4,7 @@ import { addStock } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { 
-    Box, Button, Table, TableBody, TableCell, TableContainer, 
+    Box, Button, Table, TableBody, TableCell, TableContainer, Tooltip,
     TableHead, TableRow, Paper, Typography, MenuItem, Select, FormControl, InputLabel, Dialog, DialogTitle, DialogContent, DialogActions, TextField 
 } from '@mui/material';
 
@@ -25,6 +25,10 @@ export default function PortfolioDashboard() {
     const { user } = useAuth();
     const username = String(user?.username);
 
+    useEffect(() => {
+        document.title = "Trading Portfolio"; // Change tab name
+    }, []);
+    
     useEffect(() => {
         if (!username) {
             console.error("No username provided!");
@@ -123,14 +127,63 @@ export default function PortfolioDashboard() {
                 </Select>
             </FormControl>
 
+
+            {filterType === 'active' ? (
             <TableContainer component={Paper} sx={{ boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)' }}>
                 <Table>
                     <TableHead sx={{ backgroundColor: '#1976d2' }}>
                         <TableRow>
-                            <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Symbol</TableCell>
-                            <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Quantity</TableCell>
-                            <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Avg Cost</TableCell>
-                            <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Total Cost</TableCell>
+                            <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign:'left' }}>Symbol</TableCell>
+                            <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign:'center' }}>Quantity</TableCell>
+                            <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign:'center' }}>Avg Cost</TableCell>
+                            <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign:'center' }}>Total Cost</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {filteredStocks.map((stock, index) => (
+                            <Tooltip
+                            key={index}
+                            title={stock.total_quantity < 0 ? "Please add the initial buy trade" : ""}
+                            arrow
+                            placement="right"
+                            slotProps={{
+                                tooltip: {
+                                    sx: {
+                                        bgcolor: "black", // Dark background
+                                        color: "white", // White text for contrast
+                                        fontSize: "14px", // Larger text for readability
+                                        fontWeight: "bold",
+                                        p: 1.5, // Padding for better spacing
+                                        borderRadius: "6px",
+                                        boxShadow: 3
+                                    },
+                                },
+                                arrow: {
+                                    sx: {
+                                        color: "black", // Arrow color matching tooltip
+                                    },
+                                },
+                            }}
+                        >
+                            <TableRow key={index} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/stocks/${stock.symbol}`)}>
+                                <TableCell sx={{textAlign:'left'}}>{stock.symbol}</TableCell>
+                                <TableCell sx={{textAlign:'center'}}>{stock.total_quantity || 0}</TableCell>
+                                <TableCell sx={{textAlign:'center'}}>{stock.avg_cost ? `₹${Number(stock.avg_cost).toFixed(2)}` : 'N/A'}</TableCell>
+                                <TableCell sx={{textAlign:'center'}}>{stock.avg_cost * stock.total_quantity ? `₹${Number(stock.avg_cost * stock.total_quantity).toFixed(2)}` : 'N/A'}</TableCell>
+                            </TableRow>
+                            </Tooltip>
+                            
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>) : <TableContainer component={Paper} sx={{ boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)' }}>
+                <Table>
+                    <TableHead sx={{ backgroundColor: '#1976d2' }}>
+                        <TableRow>
+                            <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign:'left' }}>Symbol</TableCell>
+                            <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign:'center' }}>Total Investment</TableCell>
+                            <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign:'center' }}>Profit Earned</TableCell>
+                            <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign:'center' }}>Dividend Earned</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -141,15 +194,15 @@ export default function PortfolioDashboard() {
                                 sx={{ cursor: 'pointer' }}
                                 onClick={() => navigate(`/stocks/${stock.symbol}`)}
                             >
-                                <TableCell>{stock.symbol}</TableCell>
-                                <TableCell>{stock.total_quantity || 0}</TableCell>
-                                <TableCell>{stock.avg_cost ? Number(stock.avg_cost).toFixed(2) : 'N/A'}</TableCell>
-                                <TableCell>{stock.avg_cost * stock.total_quantity ? Number(stock.avg_cost * stock.total_quantity).toFixed(2) : 'N/A'}</TableCell>
+                                <TableCell sx={{textAlign:'left'}}>{stock.symbol}</TableCell>
+                                <TableCell sx={{textAlign:'center'}}>{stock.avg_cost ? `₹${Number(stock.avg_cost).toFixed(2)}` : 'N/A'}</TableCell>
+                                <TableCell sx={{textAlign:'center', color: stock.total_profit >=0 ? "green" : "red"}}>{`₹${stock.total_profit}` || "₹0"}</TableCell>
+                                <TableCell sx={{textAlign:'center'}}>{`₹${stock.total_dividends}`}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
-            </TableContainer>
+            </TableContainer>}
         </Box>
     );
 }

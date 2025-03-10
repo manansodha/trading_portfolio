@@ -71,6 +71,7 @@ function AppContent() {
       </header>
 
       <main className="app-content">
+      
       <Routes>
         <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

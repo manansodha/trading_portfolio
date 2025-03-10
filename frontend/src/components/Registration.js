@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TextField,
@@ -19,6 +19,11 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
+
+
+  useEffect(() => {
+      document.title = "Register Account - Trading Portfolio"; // Change tab name
+  }, []);
 
   // Handle registration
   const handleRegister = async (e) => {

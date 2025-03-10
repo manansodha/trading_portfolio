@@ -123,7 +123,7 @@ exports.deleteTrades = async (req, res) => {
 
     if (trade_type.toUpperCase() === 'DIVIDEND') {
         try {
-            await db.execute(`DELETE FROM dividend_${username} where trade_id =? and symbol=? and trade_type = "Dividend"`, [trade_id, symbol]);
+            await db.execute(`DELETE FROM dividend_${username} where id =? and symbol=? and trade_type = "Dividend"`, [trade_id, symbol]);
             res.json({ message: "Dividend deleted successfully" });
         } catch (error) {
             console.error("Error deleting dividend:", error);

@@ -81,7 +81,7 @@ export default function PortfolioDashboard() {
         }
     };
 
-    const soldStocks = stocks.filter(stock => Number(stock.total_quantity) === 0);
+    const soldStocks = stocks.filter(stock => Number(stock.net_quantity) === 0);
     const totalInvestmentSold = soldStocks.reduce(
         (acc, stock) => acc + Number(stock.total_cost), 0
     );
@@ -90,7 +90,7 @@ export default function PortfolioDashboard() {
     (acc, stock) => acc + Number(stock.total_profit), 0
     );
 
-    const activeStocks = stocks.filter(stock => Number(stock.total_quantity) !== 0);
+    const activeStocks = stocks.filter(stock => Number(stock.net_quantity) !== 0);
     const totalInvestmentActive = activeStocks.reduce(
         (acc, stock) => acc + Number(stock.total_cost), 0
     );

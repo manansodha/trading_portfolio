@@ -190,7 +190,7 @@ export default function PortfolioDashboard() {
                         {filteredStocks.map((stock, index) => (
                             <Tooltip
                             key={index}
-                            title={stock.total_quantity < 0 ? "Please add the initial buy trade" : ""}
+                            title={stock.net_quantity < 0 ? "Please add the initial buy trade" : ""}
                             arrow
                             placement="right"
                             slotProps={{

@@ -54,9 +54,9 @@ export default function PortfolioDashboard() {
     // Apply filtering when stocks or filterType changes
     useEffect(() => {
         if (filterType === "active") {
-            setFilteredStocks(stocks.filter(stock => Number(stock.total_quantity) !== 0));
+            setFilteredStocks(stocks.filter(stock => Number(stock.net_quantity) !== 0));
         } else if (filterType === "sold") {
-            setFilteredStocks(stocks.filter(stock => Number(stock.total_quantity) === 0));
+            setFilteredStocks(stocks.filter(stock => Number(stock.net_quantity) === 0));
         }
     }, [stocks, filterType]);
 

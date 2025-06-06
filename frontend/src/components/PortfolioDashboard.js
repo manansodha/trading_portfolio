@@ -249,7 +249,7 @@ export default function PortfolioDashboard() {
                                 <TableCell sx={{textAlign:'left'}}>{stock.symbol}</TableCell>
                                 {/* <TableCell sx={{textAlign:'center'}}>{stock.avg_cost ? `₹${Number(stock.avg_cost).toFixed(2)}` : 'N/A'}</TableCell> */}
                                 <TableCell sx={{textAlign:'center', color: stock.total_profit >=0 ? "green" : "red"}}>{`${formatINR(stock.total_profit)}` || "₹0"}</TableCell>
-                                <TableCell sx={{textAlign:'center'}}>{`₹${formatINR(stock.total_dividends)}`}</TableCell>
+                                <TableCell sx={{textAlign:'center'}}>{`${formatINR(stock.total_dividends)}`}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

@@ -4,44 +4,105 @@ const finance = new Finance();
 const db = require('../utils/db');  // Make sure db connection is imported
 
 exports.getPortfolio = async (req, res) => {
-    
-    const portfolioTable = `portfolio_${req.query.username}`; 
-    const dividendTable = `dividend_${req.query.username}`; 
-    
+    const portfolioTable = `portfolio_${req.query.username}`;
+    const dividendTable = `dividend_${req.query.username}`;
+
     try {
-        const rows = await db.execute(
-            `SELECT 
-                p.symbol, 
-                SUM(CASE WHEN p.trade_type = 'buy' THEN p.quantity ELSE -p.quantity END) AS total_quantity,
-                SUM(CASE WHEN p.trade_type = 'buy' THEN -p.quantity * p.average_price ELSE p.quantity * p.average_price END) AS total_profit,
-                AVG(CASE WHEN p.trade_type = 'buy' THEN p.average_price ELSE NULL END) AS avg_cost,
-                SUM(CASE WHEN p.trade_type = 'buy' THEN p.quantity * p.average_price ELSE 0 END) AS total_cost,
-                COALESCE(SUM(d.quantity * d.dividend_per_share), 0) AS total_dividends
-            FROM ${portfolioTable} p
-            LEFT JOIN ${dividendTable} d ON p.symbol = d.symbol
-            GROUP BY p.symbol
-            ORDER BY p.symbol;`
-        );
-        res.json(rows);
+        const trades = await db.execute(`
+            SELECT *
+            FROM ${portfolioTable}
+            ORDER BY symbol, date, trade_id
+        `);
+
+        const dividends = await db.execute(`
+            SELECT symbol, SUM(quantity * dividend_per_share) AS total_dividends
+            FROM ${dividendTable}
+            GROUP BY symbol
+        `);
+
+        const dividendMap = Object.fromEntries(dividends.map(d => [d.symbol, Number(d.total_dividends)]));
+
+        const portfolio = {};
+
+        for (const trade of trades) {
+            const symbol = trade.symbol;
+            const type = trade.trade_type.trim().toLowerCase();
+            const quantity = Number(trade.quantity);
+            const price = Number(trade.average_price);
+
+            if (!portfolio[symbol]) {
+                portfolio[symbol] = {
+                    symbol,
+                    lots: [],
+                    total_quantity: 0,
+                    total_cost: 0,
+                    realized_gain: 0,
+                    total_sell_value: 0
+                };
+            }
+
+            const entry = portfolio[symbol];
+
+            if (type === 'buy') {
+                entry.lots.push({ quantity, price });
+                entry.total_quantity += quantity;
+                entry.total_cost += quantity * price;
+            } else if (type === 'sell') {
+                let qtyToSell = quantity;
+                let sellValue = quantity * price;
+                entry.total_sell_value += sellValue;
+                while (qtyToSell > 0 && entry.lots.length > 0) {
+                    const lot = entry.lots[0];
+                    const sellQty = Math.min(qtyToSell, lot.quantity);
+
+                    // Calculate gain for the sold quantity
+                    const costBasis = sellQty * lot.price;
+                    const proceeds = sellQty * price;
+                    entry.realized_gain += proceeds - costBasis;
+
+                    lot.quantity -= sellQty;
+                    entry.total_quantity -= sellQty;
+                    entry.total_cost -= costBasis;
+                    qtyToSell -= sellQty;
+
+                    if (lot.quantity === 0) entry.lots.shift();
+                }
+            }
+        }
+
+        const result = Object.values(portfolio).map(entry => {
+            return {
+                symbol: entry.symbol,
+                total_quantity: entry.total_quantity,
+                total_cost: Number(entry.total_cost.toFixed(2)),
+                avg_cost: entry.total_quantity > 0 ? Number((entry.total_cost / entry.total_quantity).toFixed(2)) : null,
+                total_dividends: dividendMap[entry.symbol] || 0,
+                realized_gain: Number(entry.realized_gain.toFixed(2)),
+                total_profit: Number((entry.realized_gain + (dividendMap[entry.symbol] || 0)).toFixed(2))
+            };
+        });
+
+        res.json(result);
     } catch (error) {
         console.error("Error fetching portfolio:", error);
         res.status(500).json({ error: 'Error fetching portfolio' });
     }
-}; 
+};
+
 
 exports.getStockDetails = async (req, res) => {
     if (!req.query.username) {
         return res.status(400).json({ error: 'Username is required' });
     }
     const portfolioTable = `portfolio_${req.query.username}`;
-    const dividendTable = `dividend_${req.query.username}`; // Different table for dividends
+    const dividendTable = `dividend_${req.query.username}`;
 
     try {
         const rows = await db.execute(
-            `SELECT trade_id as id, date, symbol, trade_type, quantity, average_price FROM ${portfolioTable} WHERE symbol = ?
+            `SELECT trade_id as id, date, symbol, trade_type, quantity, average_price FROM ${portfolioTable} WHERE symbol = $1
              UNION ALL
              SELECT id, date, symbol, trade_type, quantity, dividend_per_share AS average_price
-             FROM ${dividendTable} WHERE symbol = ?
+             FROM ${dividendTable} WHERE symbol = $2
              ORDER BY date DESC`,
             [req.params.symbol, req.params.symbol]
         );
@@ -123,10 +184,10 @@ exports.temporaryXIRR = async (req, res) => {
 
         // Fetch all trades for the stock
         const trades = await db.execute(
-            `SELECT date, trade_type, quantity, average_price FROM ${portfolioTable} WHERE symbol = ?
+            `SELECT date, trade_type, quantity, average_price FROM ${portfolioTable} WHERE symbol = $1
              UNION ALL
              SELECT date, trade_type, quantity, dividend_per_share AS average_price
-             FROM ${dividendTable} WHERE symbol = ?
+             FROM ${dividendTable} WHERE symbol = $2
              ORDER BY date DESC`,
             [symbol, symbol]
         );

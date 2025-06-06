@@ -138,6 +138,7 @@ export const changeName = async (data) => {
 
 export const stockSplit = async (data) => {
   try {
+    console.log("Stock split response:", data);
     const response = await axios.post(`${API_BASE_URL}/api/admin/stock-split`, data);
     return response.data;
   } catch (error) {
@@ -148,6 +149,7 @@ export const stockSplit = async (data) => {
 
 export const bonusIssue = async (data) => {
   try {
+    console.log("Stock split response:", data);
     const response = await axios.post(`${API_BASE_URL}/api/admin/bonus-issue`, data);
     return response.data;
   } catch (error) {

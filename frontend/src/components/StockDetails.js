@@ -104,7 +104,7 @@ export default function StockDetails() {
         try {
             console.log("Adding trade:", tradeData);
             await addTrade(tradeData, symbol, username);
-            alert("Trade added successfully!");
+            // alert("Trade added successfully!");
             setQuantity("");
             setPrice("");
             setTradeDate("");

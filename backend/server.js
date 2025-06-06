@@ -1,5 +1,4 @@
 const express = require('express');
-const mysql = require('mysql2/promise');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -74,9 +73,10 @@ const isAdmin = async (req, res, next) => {
   }
 
   try {
-    const [rows] = await db.execute(`SELECT role FROM users WHERE username = ?`, [username]);
+    // PostgreSQL parameterized query
+    const rows = await db.execute(`SELECT role FROM users WHERE username = $1`, [username]);
     
-    if (rows.length === 0 || rows.role !== 'admin') {
+    if (rows.length === 0 || rows[0].role !== 'admin') {
       return res.status(403).json({ error: "Access denied. Admin only." });
     }
 

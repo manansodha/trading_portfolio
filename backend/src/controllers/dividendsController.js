@@ -10,11 +10,12 @@ exports.parseDividends = async (req, res) => {
         const table = 'dividend_'+String(username);
         for (const row of data) {
             if (!row['__EMPTY_2'] || !row['__EMPTY'] || !row['__EMPTY_3'] || !row['__EMPTY_4']) {
-                data.shift();}
+                continue;
+            }
             try{
             await db.execute(
                 `INSERT INTO ${table} (date, symbol, trade_type, quantity, dividend_per_share)
-                 VALUES (?, ?, ?, ?, ?)`,
+                 VALUES ($1, $2, $3, $4, $5)`,
                 [row['__EMPTY_2'], row['__EMPTY'], 'dividend', row['__EMPTY_3'], row['__EMPTY_4']]
             );
             }catch(err){

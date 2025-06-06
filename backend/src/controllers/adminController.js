@@ -1,5 +1,6 @@
-const Finance = require('financejs');
 const db = require('../utils/db');
+
+
 
 exports.changeStockName = async (req, res) => {
     const { oldSymbol, newSymbol, username } = req.body;
@@ -9,7 +10,7 @@ exports.changeStockName = async (req, res) => {
 
     try {
         await db.execute(
-            `INSERT INTO stock_adjustments (symbol, type, new_symbol) VALUES (?, ?, ?)`,
+            `INSERT INTO stock_adjustments (symbol, type, new_symbol) VALUES ($1, $2, $3)`,
             [oldSymbol, "RENAME", newSymbol]
         );
         res.status(200).json({ message: "Stock name change recorded successfully" });
@@ -20,16 +21,15 @@ exports.changeStockName = async (req, res) => {
 };
 
 exports.stockSplit = async (req, res) => {
-    const { symbol, splitRatio, date, username } = req.body;
-
-    if (!symbol || !splitRatio || !date || splitRatio <= 0) {
+    const { oldSymbol, adjustmentValue, actionDate, username } = req.body;
+    if (!oldSymbol || !adjustmentValue || !actionDate || adjustmentValue <= 0) {
         return res.status(400).json({ error: "Invalid input values" });
     }
 
     try {
         await db.execute(
-            `INSERT INTO stock_adjustments (symbol, type, split_ratio, date) VALUES (?, ?, ?, ?)`,
-            [symbol, "SPLIT", splitRatio, date]
+            `INSERT INTO stock_adjustments (symbol, type, split_ratio, date) VALUES ($1, $2, $3, $4)`,
+            [oldSymbol, "SPLIT", adjustmentValue, actionDate]
         );
         res.status(200).json({ message: "Stock split recorded successfully" });
     } catch (error) {
@@ -47,7 +47,7 @@ exports.bonusIssue = async (req, res) => {
 
     try {
         await db.execute(
-            `INSERT INTO stock_adjustments (symbol, type, bonus_ratio, date) VALUES (?, ?, ?, ?)`,
+            `INSERT INTO stock_adjustments (symbol, type, bonus_ratio, date) VALUES ($1, $2, $3, $4)`,
             [oldSymbol, "BONUS", adjustmentValue, actionDate]
         );
         res.status(200).json({ message: "Bonus issue recorded successfully" });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Button, TextField, Typography, MenuItem, Select} from '@mui/material';
 // import axios from 'axios';
 import { changeName, stockSplit, bonusIssue } from '../services/api';
@@ -12,6 +12,10 @@ export default function AdminDashboard() {
     const [actionDate, setActionDate] = useState('');
     const {user} = useAuth();
     const username = user?.username;
+
+    useEffect(() => {
+        document.title = "Admin Dashboard"; // Change tab name
+    }, []);
 
     const handleRatioChange = (e) => {
         const value = e.target.value;

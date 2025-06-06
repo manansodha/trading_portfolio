@@ -10,15 +10,17 @@ exports.parseTrades = async (req, res) => {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const data = xlsx.utils.sheet_to_json(sheet);
         const table = 'portfolio_'+String(username);
+        
         for (const row of data) {
+            // console.log(row)
             if (!row['__EMPTY_10'] || !row['__EMPTY_2'] || !row['__EMPTY'] || !row['__EMPTY_6'] || !row['__EMPTY_8'] || !row['__EMPTY_9']) {
-                data.shift();
+                continue;
             }
             try{
             await db.execute(
                 `INSERT INTO ${table} (trade_id, date, symbol, trade_type, quantity, average_price)
-                 VALUES (?, ?, ?, ?, ?, ?)`,
-                [row['__EMPTY_10'], row['__EMPTY_2'], row['__EMPTY'], row['__EMPTY_6'], row['__EMPTY_8'], row['__EMPTY_9']]
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [row['__EMPTY_10'], row['__EMPTY_2'], row['__EMPTY'], row['__EMPTY_6'].toUpperCase(), row['__EMPTY_8'], row['__EMPTY_9']]
             );}catch(err){
                 console.log(err);
             }
@@ -43,7 +45,7 @@ exports.addTrade = async (req, res) => {
             const table = `dividend_${username}`;
             await db.execute(
                 `INSERT INTO ${table} (date, symbol, trade_type, quantity, dividend_per_share)
-                 VALUES (?, ?, ?, ?, ?)`,
+                 VALUES ($1, $2, $3, $4, $5)`,
                 [date, symbol, trade_type.toUpperCase(), quantity, price]
             );
         }else{
@@ -51,7 +53,7 @@ exports.addTrade = async (req, res) => {
             const trade_id = Math.floor(Math.random() * 10000); // Generates a random number
             await db.execute(
                 `INSERT INTO ${table} (date, trade_id, symbol, trade_type, quantity, average_price)
-                 VALUES (?, ?, ?, ?, ?, ?)`,
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
                 [date, trade_id, symbol, trade_type.toUpperCase(), quantity, price]
             );
         }
@@ -82,7 +84,7 @@ exports.addStock = async (req, res) => {
         try {
             await db.execute(
                 `INSERT INTO ${table} (date, trade_id, symbol, trade_type, quantity, average_price)
-                 VALUES (?, ?, ?, ?, ?, ?)`,
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
                 [date, trade_id, symbol, type.toUpperCase(), quantity, price]
             );
             res.json({ message: "Stock added successfully" });
@@ -95,7 +97,7 @@ exports.addStock = async (req, res) => {
         try {
             await db.execute(
                 `INSERT INTO ${table} (date, symbol, trade_type, quantity, dividend_per_share)
-                 VALUES (?, ?, ?, ?, ?)`,
+                 VALUES ($1, $2, $3, $4, $5)`,
                 [date, symbol, type.toUpperCase(), quantity, price]
             );
             res.json({ message: "Dividend added successfully" });
@@ -123,7 +125,10 @@ exports.deleteTrades = async (req, res) => {
 
     if (trade_type.toUpperCase() === 'DIVIDEND') {
         try {
-            await db.execute(`DELETE FROM dividend_${username} where id =? and symbol=? and trade_type = "Dividend"`, [trade_id, symbol]);
+            await db.execute(
+                `DELETE FROM dividend_${username} WHERE id = $1 AND symbol = $2 AND trade_type = 'DIVIDEND'`,
+                [trade_id, symbol]
+            );
             res.json({ message: "Dividend deleted successfully" });
         } catch (error) {
             console.error("Error deleting dividend:", error);
@@ -133,7 +138,10 @@ exports.deleteTrades = async (req, res) => {
     }
     else if (trade_type.toUpperCase() === 'BUY' || trade_type.toUpperCase() === 'SELL') {
         try {
-            await db.execute(`DELETE FROM portfolio_${username} where trade_id =? and symbol=? and trade_type =?`, [trade_id, symbol, trade_type.toUpperCase()]);
+            await db.execute(
+                `DELETE FROM portfolio_${username} WHERE trade_id = $1 AND symbol = $2 AND trade_type = $3`,
+                [trade_id, symbol, trade_type.toUpperCase()]
+            );
             res.json({ message: "Trades deleted successfully" });
         } catch (error) {
             console.error("Error deleting trades:", error);

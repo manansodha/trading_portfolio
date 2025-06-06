@@ -7,57 +7,117 @@ const crypto = require('crypto');
 const applyAdjustments = async (username) => {
   try {
       const adjustments = await db.execute(`SELECT * FROM stock_adjustments`);
-      console.log('Adjustments:', adjustments);
+      // Only apply if adjustments is not null and has more than 1 entry
+      if (!adjustments || adjustments.length <= 1) {
+          console.log("No adjustments or only one adjustment found, skipping applyAdjustments.");
+          return;
+      }
 
-      for (let adj of adjustments) {
-          // Check if this adjustment was already applied
-          const exists = await db.execute(
-              `SELECT * FROM user_adjustments_applied WHERE username = ? AND adjustment_id = ?`,
-              [username, adj.id]
-          );
+      if (username != 'admin1') {
+          for (let adj of adjustments) {
+              // Check if this adjustment was already applied
+              const exists = await db.execute(
+                  `SELECT * FROM user_adjustments_applied WHERE username = $1 AND adjustment_id = $2`,
+                  [username, adj.id]
+              );
 
-          if (exists.length > 0) {
-              console.log(`Adjustment ${adj.id} already applied for ${username}`);
-              continue; // Skip if already applied
-          }
+              if (exists.length > 0) {
+                  console.log(`Adjustment ${adj.id} already applied for ${username}`);
+                  continue; // Skip if already applied
+              }
 
-          if (adj.new_symbol) {
+              if (adj.new_symbol) {
+                  await db.execute(
+                      `UPDATE portfolio_${username} SET symbol = $1 WHERE symbol = $2`,
+                      [adj.new_symbol, adj.symbol]
+                  );
+              }
+
+              if (adj.split_ratio) {
+                  await db.execute(
+                      `UPDATE portfolio_${username} 
+                      SET quantity = quantity * $1, average_price = average_price / $2 
+                      WHERE symbol = $3 AND date < $4`,
+                      [adj.split_ratio, adj.split_ratio, adj.symbol, adj.date]
+                  );
+              }
+
+              if (adj.bonus_ratio) {
+                  await db.execute(
+                      `UPDATE portfolio_${username} 
+                      SET 
+                          quantity = quantity * (1 + $1),  
+                          average_price = average_price / (1 + $2)  
+                      WHERE symbol = $3 AND date < $4`,
+                      [adj.bonus_ratio, adj.bonus_ratio, adj.symbol, adj.date] 
+                  );
+              }        
+
+              // Mark adjustment as applied
               await db.execute(
-                  `UPDATE portfolio_${username} SET symbol = ? WHERE symbol = ?`,
-                  [adj.new_symbol, adj.symbol]
+                  `INSERT INTO user_adjustments_applied (username, adjustment_id) VALUES ($1, $2)`,
+                  [username, adj.id]
               );
           }
-
-          if (adj.split_ratio) {
-              await db.execute(
-                  `UPDATE portfolio_${username} 
-                  SET quantity = quantity * ?, average_price = average_price / ? 
-                  WHERE symbol = ? AND date < ?`,
-                  [adj.split_ratio, adj.split_ratio, adj.symbol, adj.date]
-              );
-          }
-
-          if (adj.bonus_ratio) {
-            await db.execute(
-                `UPDATE portfolio_${username} 
-                SET 
-                    quantity = quantity * (1 + ?),  
-                    average_price = average_price / (1 + ?)  
-                WHERE symbol = ? AND date < ?`,
-                [adj.bonus_ratio, adj.bonus_ratio, adj.symbol, adj.date] 
-            );
-        }        
-
-          // Mark adjustment as applied
-          await db.execute(
-              `INSERT INTO user_adjustments_applied (username, adjustment_id) VALUES (?, ?)`,
-              [username, adj.id]
-          );
       }
   } catch (error) {
       console.error("Error applying stock adjustments:", error);
   }
 };
+// const applyAdjustments = async (username) => {
+//   try {
+//       const adjustments = await db.execute(`SELECT * FROM stock_adjustments`);
+//       console.log('Adjustments:', adjustments);
+
+//       if (username!='admin1'){for (let adj of adjustments) {
+//           // Check if this adjustment was already applied
+//           const exists = await db.execute(
+//               `SELECT * FROM user_adjustments_applied WHERE username = ? AND adjustment_id = ?`,
+//               [username, adj.id]
+//           );
+
+//           if (exists.length > 0) {
+//               console.log(`Adjustment ${adj.id} already applied for ${username}`);
+//               continue; // Skip if already applied
+//           }
+
+//           if (adj.new_symbol) {
+//               await db.execute(
+//                   `UPDATE portfolio_${username} SET symbol = ? WHERE symbol = ?`,
+//                   [adj.new_symbol, adj.symbol]
+//               );
+//           }
+
+//           if (adj.split_ratio) {
+//               await db.execute(
+//                   `UPDATE portfolio_${username} 
+//                   SET quantity = quantity * ?, average_price = average_price / ? 
+//                   WHERE symbol = ? AND date < ?`,
+//                   [adj.split_ratio, adj.split_ratio, adj.symbol, adj.date]
+//               );
+//           }
+
+//           if (adj.bonus_ratio) {
+//             await db.execute(
+//                 `UPDATE portfolio_${username} 
+//                 SET 
+//                     quantity = quantity * (1 + ?),  
+//                     average_price = average_price / (1 + ?)  
+//                 WHERE symbol = ? AND date < ?`,
+//                 [adj.bonus_ratio, adj.bonus_ratio, adj.symbol, adj.date] 
+//             );
+//         }        
+
+//           // Mark adjustment as applied
+//           await db.execute(
+//               `INSERT INTO user_adjustments_applied (username, adjustment_id) VALUES (?, ?)`,
+//               [username, adj.id]
+//           );}
+//       }
+//   } catch (error) {
+//       console.error("Error applying stock adjustments:", error);
+//   }
+// };
 
 
 exports.login = async (req, res) => {
@@ -69,7 +129,7 @@ exports.login = async (req, res) => {
   }
 
   try {
-    const rows = await db.execute('SELECT * FROM users WHERE username = ?', [username]);
+    const rows = await db.execute('SELECT * FROM users WHERE username = $1', [username]);
     
     // console.log('DB Query Result:', rows); 
 
@@ -87,13 +147,23 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, fname: user.f_name },
+      { id: user.id, username: user.username, fname: user.fname },
       process.env.JWT_SECRET,
       { expiresIn: '30m' }
     );
-    console.log('Hello')
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS stock_adjustments (
+            id SERIAL PRIMARY KEY,
+            symbol VARCHAR(100) NOT NULL,
+            type VARCHAR(20) NOT NULL,
+            new_symbol VARCHAR(100),
+            split_ratio NUMERIC,
+            bonus_ratio NUMERIC,
+            date DATE
+        )
+    `);
     applyAdjustments(username);
-    res.json({token, user: { id: user.id, username: user.username, fname: user.f_name, role:user.role } });
+    res.json({token, user: { id: user.id, username: user.username, fname: user.fname, role:user.role } });
   } catch (error) {
 
     res.status(500).json({ error: 'Internal server error' });
@@ -118,36 +188,36 @@ exports.register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insert the new user
-    await db.execute(
-      'INSERT INTO users (id, f_name, l_name, username, password) VALUES (?, ?, ?, ?, ?)',
-      [userId, fname, lname, username, hashedPassword]
+   await db.execute(
+      'INSERT INTO users (id, fname, lname, username, password, role) VALUES ($1, $2, $3, $4, $5, $6)',
+      [userId, fname, lname, username, hashedPassword, 'user']
     );
 
     const tableName = `portfolio_${username}`;
-        const createTableQuery = `
-            CREATE TABLE IF NOT EXISTS ${tableName} (
-                trade_id INT PRIMARY KEY,
-                date DATE NOT NULL,
-                symbol VARCHAR(100) NOT NULL,
-                trade_type ENUM('buy', 'sell') NOT NULL,
-                quantity INT DEFAULT 0,
-                average_price DECIMAL(10,2) DEFAULT 0.00
-            )
-        `;
+    const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS ${tableName} (
+            trade_id SERIAL PRIMARY KEY,
+            date DATE NOT NULL,
+            symbol VARCHAR(100) NOT NULL,
+            trade_type VARCHAR(10) NOT NULL CHECK (trade_type IN ('BUY', 'SELL')),
+            quantity INT DEFAULT 0,
+            average_price NUMERIC(10,2) DEFAULT 0.00
+        )
+    `;
     await db.execute(createTableQuery);
 
     const tableName2 = `dividend_${username}`;
-        const createTableQuery2 = `
-            CREATE TABLE IF NOT EXISTS ${tableName2} (
-                id INT AUTO_INCREMENT,
-                date DATE NOT NULL,
-                symbol VARCHAR(100) NOT NULL,
-                trade_type NOT NULL default 'dividend',
-                quantity INT DEFAULT 0,
-                dividend_per_share DECIMAL(10,2) DEFAULT 0.00,
-                Primary Key (date, symbol, dividend_per_share)
-            )
-        `;
+    const createTableQuery2 = `
+        CREATE TABLE IF NOT EXISTS ${tableName2} (
+            id SERIAL PRIMARY KEY,
+            date DATE NOT NULL,
+            symbol VARCHAR(100) NOT NULL,
+            trade_type VARCHAR(20) NOT NULL DEFAULT 'DIVIDEND',
+            quantity INT DEFAULT 0,
+            dividend_per_share NUMERIC(10,2) DEFAULT 0.00,
+            UNIQUE (date, symbol, dividend_per_share)
+        )
+    `;
     await db.execute(createTableQuery2);
     res.status(201).json({ message: 'User registered successfully' });
 

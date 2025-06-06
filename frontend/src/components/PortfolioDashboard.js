@@ -214,7 +214,7 @@ export default function PortfolioDashboard() {
                         >
                             <TableRow key={index} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/stocks/${stock.symbol}`)}>
                                 <TableCell sx={{textAlign:'left'}} >{stock.symbol}</TableCell>
-                                <TableCell sx={{textAlign:'center'}} >{formatNumber(stock.total_quantity) || 0}</TableCell>
+                                <TableCell sx={{textAlign:'center'}} >{formatNumber(stock.net_quantity) || 0}</TableCell>
                                 <TableCell sx={{textAlign:'center'}}>{stock.avg_cost ? `${formatINR(Number(stock.avg_cost))}` : 'N/A'}</TableCell>
                                 <TableCell sx={{textAlign:'center'}}>{stock.avg_cost * stock.total_quantity ? `${formatINR(Number(stock.avg_cost * stock.total_quantity))}` : 'N/A'}</TableCell>
                             </TableRow>

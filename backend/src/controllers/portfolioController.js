@@ -37,7 +37,8 @@ exports.getPortfolio = async (req, res) => {
                     total_quantity: 0,
                     total_cost: 0,
                     realized_gain: 0,
-                    total_sell_value: 0
+                    total_sell_value: 0,
+                    net_quantity: 0
                 };
             }
 
@@ -47,15 +48,16 @@ exports.getPortfolio = async (req, res) => {
                 entry.lots.push({ quantity, price });
                 entry.total_quantity += quantity;
                 entry.total_cost += quantity * price;
+                entry.net_quantity += quantity; // track net buys
             } else if (type === 'sell') {
                 let qtyToSell = quantity;
                 let sellValue = quantity * price;
                 entry.total_sell_value += sellValue;
+                entry.net_quantity -= quantity; // track net sells
                 while (qtyToSell > 0 && entry.lots.length > 0) {
                     const lot = entry.lots[0];
                     const sellQty = Math.min(qtyToSell, lot.quantity);
 
-                    // Calculate gain for the sold quantity
                     const costBasis = sellQty * lot.price;
                     const proceeds = sellQty * price;
                     entry.realized_gain += proceeds - costBasis;
@@ -78,7 +80,8 @@ exports.getPortfolio = async (req, res) => {
                 avg_cost: entry.total_quantity > 0 ? Number((entry.total_cost / entry.total_quantity).toFixed(2)) : null,
                 total_dividends: dividendMap[entry.symbol] || 0,
                 realized_gain: Number(entry.realized_gain.toFixed(2)),
-                total_profit: Number((entry.realized_gain + (dividendMap[entry.symbol] || 0)).toFixed(2))
+                total_profit: Number((entry.realized_gain + (dividendMap[entry.symbol] || 0)).toFixed(2)),
+                net_quantity: entry.net_quantity,
             };
         });
 

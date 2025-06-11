@@ -91,9 +91,10 @@ const isAdmin = async (req, res, next) => {
 app.use('/api/admin', isAdmin, adminRoutes);
 
 
-
+app.use('/api/financials', require('./src/routes/financialRoutes'));
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+

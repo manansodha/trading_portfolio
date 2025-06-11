@@ -3,7 +3,11 @@ import { getStockDetails, addTrade, deleteTrade, temporaryXIRR} from '../service
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import StockFinancials from './FinancialData';
+import TradingViewWidget from './TradingView';
 import {
+    Tab,
+    Tabs, 
     Table,
     TableBody,
     TableCell,
@@ -54,7 +58,7 @@ export default function StockDetails() {
      
     useEffect(() => {
         document.title = symbol; // Change tab name
-    }, []);
+    }, [symbol]);
 
     useEffect(() => {
         if (!username) {
@@ -167,6 +171,14 @@ export default function StockDetails() {
     };
 
 
+    // Tab state
+    const [tabValue, setTabValue] = useState(0);
+
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
+    };
+
+
     return (
         <Box sx={{ p: 3, fontFamily: "Arial, sans-serif" }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: '20px', marginBottom: '20px' }}>
@@ -179,7 +191,7 @@ export default function StockDetails() {
             </Box>
 
             <Typography variant="h4" align="center" gutterBottom>
-                Stock Details: {symbol}
+                {symbol}
             </Typography>
 
             {/* Summary Details */}
@@ -222,44 +234,79 @@ export default function StockDetails() {
             </Box>
 
 
-            <TableContainer component={Paper} sx={{ mt: 3, boxShadow: 3 }}>
-                <Table>
-                    <TableHead>
-                        <TableRow sx={{ backgroundColor: "#f4f4f4" }}>
-                            <TableCell align="center"><strong>Date</strong></TableCell>
-                            <TableCell align="center"><strong>Type</strong></TableCell>
-                            <TableCell align="center"><strong>Quantity</strong></TableCell>
-                            <TableCell align="center"><strong>Average Cost (₹)</strong></TableCell>
-                            <TableCell align="center"><strong>Total Cost (₹)</strong></TableCell>
-                            <TableCell align="center"><strong>Action</strong></TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {trades.length > 0 ? (
-                            trades.map((trade) => (
-                                <TableRow key={trade.id} sx={{ backgroundColor: trades.indexOf(trade) % 2 === 0 ? "#f9f9f9" : "white" }}>
-                                    <TableCell align="center">{new Date(trade.date).toLocaleDateString()}</TableCell>
-                                    <TableCell align="center" sx={{ fontWeight: "bold", color: trade.trade_type.toUpperCase() === "BUY" ? "green" : "red" }}>
-                                        {trade.trade_type.toUpperCase()}
-                                    </TableCell>
-                                    <TableCell align="center">{trade.quantity || "-"}</TableCell>
-                                    <TableCell align="center">{trade.average_price ? `₹${parseFloat(trade.average_price).toFixed(2)}` : "-"}</TableCell>
-                                    <TableCell align="center">{trade.average_price ? `₹${(parseFloat(trade.average_price) * trade.quantity).toFixed(2)}` : "-"}</TableCell>
-                                    <TableCell align="center">
-                                        <Button color="error" onClick={() => handleDeleteTrade(trade.id, trade.symbol, trade.trade_type)}>Delete</Button>
-                                    </TableCell>
+            {/* Tabs Section */}
+            <Box sx={{ width: '100%', mt: 4 }}>
+                <Tabs value={tabValue} onChange={handleTabChange} centered variant="fullWidth">
+                    <Tab
+                        label="My Transactions"
+                        onMouseEnter={e => e.target.style.color = 'white'}
+                        onMouseLeave={e => e.target.style.color = ''}
+                        sx={{  
+                            fontSize: '16px' 
+                        }}
+                    />
+                    <Tab
+                        label="Stock Details"
+                        onMouseEnter={e => e.target.style.color = 'white'}
+                        onMouseLeave={e => e.target.style.color = ''}
+                        sx={{ 
+                            fontSize: '16px' 
+                        }}/>
+                </Tabs>
+
+                {/* My Transactions Tab */}
+                {tabValue === 0 && (
+                    <TableContainer component={Paper} sx={{ mt: 3, boxShadow: 3 }}>
+                        <Table>
+                            <TableHead>
+                                <TableRow sx={{ backgroundColor: "#f4f4f4" }}>
+                                    <TableCell align="center"><strong>Date</strong></TableCell>
+                                    <TableCell align="center"><strong>Type</strong></TableCell>
+                                    <TableCell align="center"><strong>Quantity</strong></TableCell>
+                                    <TableCell align="center"><strong>Average Cost (₹)</strong></TableCell>
+                                    <TableCell align="center"><strong>Total Cost (₹)</strong></TableCell>
+                                    <TableCell align="center"><strong>Action</strong></TableCell>
                                 </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={5} align="center" sx={{ fontStyle: "italic" }}>
-                                    No trade history available
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                            </TableHead>
+                            <TableBody>
+                                {trades.length > 0 ? (
+                                    trades.map((trade) => (
+                                        <TableRow key={trade.id} sx={{ backgroundColor: trades.indexOf(trade) % 2 === 0 ? "#f9f9f9" : "white" }}>
+                                            <TableCell align="center">{new Date(trade.date).toLocaleDateString()}</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: "bold", color: trade.trade_type.toUpperCase() === "BUY" ? "green" : "red" }}>
+                                                {trade.trade_type.toUpperCase()}
+                                            </TableCell>
+                                            <TableCell align="center">{trade.quantity || "-"}</TableCell>
+                                            <TableCell align="center">{trade.average_price ? `₹${parseFloat(trade.average_price).toFixed(2)}` : "-"}</TableCell>
+                                            <TableCell align="center">{trade.average_price ? `₹${(parseFloat(trade.average_price) * trade.quantity).toFixed(2)}` : "-"}</TableCell>
+                                            <TableCell align="center">
+                                                <Button color="error" onClick={() => handleDeleteTrade(trade.id, trade.symbol, trade.trade_type)}>Delete</Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={6} align="center" sx={{ fontStyle: "italic" }}>
+                                            No trade history available
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                )}
+
+                {/* Stock Details Tab */}
+                {tabValue === 1 && (
+                    <Box sx={{ mt: 3, p: 3, backgroundColor: "#fafafa", borderRadius: "8px", boxShadow: 2 }}>
+                        <Box sx={{display: 'flex', flexDirection: 'column', gap: '50px', mb: 3}}>
+                        <StockFinancials symbol={symbol} />
+                        <TradingViewWidget symbol={symbol} />
+                        </Box>
+                    </Box>
+                )}
+            </Box>
+
                     
                 {/* Add Trade Box */}
                 <Dialog open={open} onClose={() => setOpen(false)}>

@@ -3,6 +3,15 @@ import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth} from './hooks/useAuth';
 import { useEffect, useState } from 'react';
+import "slick-carousel/slick/slick.css"; 
+import "slick-carousel/slick/slick-theme.css";
+import { Avatar, Tooltip } from '@mui/material';
+import {Menu, MenuButton, MenuItem, Dropdown} from '@mui/joy';
+import Button from '@mui/material/Button';
+import ButtonGroup from '@mui/material/ButtonGroup';
+import AccountBoxIcon from '@mui/icons-material/AccountBox';
+import LogoutIcon from '@mui/icons-material/Logout';
+import { grey, blue} from '@mui/material/colors';
 // import { setAuthToken } from './services/api';
 import PortfolioDashboard from './components/PortfolioDashboard';
 import PrivateRoute from './components/PrivateRoute'; 
@@ -11,6 +20,7 @@ import Register from './components/Registration';
 import StockDetails from './components/StockDetails';
 import UploadFile from './components/UploadFile';
 import AdminDashboard from './components/AdminDashboard';
+import ProfilePage from './components/ProfilePage';
 import './App.css';
 
 function App() {
@@ -53,29 +63,43 @@ function AppContent() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <h1>Trading Portfolio Manager</h1>
-        <div className="user-info">
+      <div className="app-header">
+        <h3>Trading Portfolio Manager</h3>
+        
           {isLoggedIn ? (
             <>
-              <span>Welcome, {user.fname}</span>
-              <button onClick={handleLogout}>Logout</button>
+            <Dropdown>
+              <MenuButton variant='plain' color='primary' sx={{ borderRadius: '100%', width: '32px', height: '32px'}}>
+                <Tooltip title={`Open Profile`} arrow placement="left" slotProps={{
+                                tooltip: {sx: {bgcolor: "black", color: "white", fontSize: '12px'},},
+                                arrow: {sx: {color: "black", },},
+                            }}>
+                  <Avatar variant='plain' size='md' sx={{ bgcolor:grey[50], color:blue[800]}}>{user.fname.charAt(0)}{user.lname.charAt(0)}</Avatar>
+                </Tooltip>
+                            
+              </MenuButton>
+              <Menu size='md' placement="bottom-end" >
+                <MenuItem onClick={() => navigate('/profile')}> <AccountBoxIcon/>Profile</MenuItem>
+                <MenuItem onClick={handleLogout}> <LogoutIcon/> Logout</MenuItem>
+              </Menu>
+            </Dropdown>
             </>
           ) : (
             <div>
-              <button onClick={() => window.location.href = '/login'}>Login</button>
-              <button onClick={() => window.location.href = '/register'}>Register</button>
+              <ButtonGroup variant="contianed">
+              <Button onClick={() => window.location.href = '/login'} sx={{fontWeight:'600'}}>Login</Button>
+              <Button onClick={() => window.location.href = '/register'} sx={{fontWeight:'600'}}>Register</Button>
+              </ButtonGroup>
             </div>
           )}
-        </div>
-      </header>
+      </div>
 
       <main className="app-content">
       
       <Routes>
         <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-
+          <Route path="/profile" element={<PrivateRoute element={<ProfilePage />} />} />
           <Route path="/portfolio" element={<PrivateRoute element={<PortfolioDashboard />} />} />
           <Route path="/admin" element={<PrivateRoute element={<AdminDashboard />} />} />
           <Route path="/stocks/:symbol" element={<StockDetails />} />

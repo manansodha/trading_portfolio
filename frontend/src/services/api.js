@@ -94,7 +94,7 @@ export const addTrade = async (tradeData) => {
     clearTimeout(timeoutId);  
 
     console.log("Trade added successfully:", response.data);
-    alert("Trade added successfully!");
+    
 } catch (error) {
     if (axios.isCancel(error)) {
         console.error("Request was canceled (timeout reached)");

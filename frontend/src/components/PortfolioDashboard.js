@@ -1,12 +1,19 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getPortfolio } from '../services/api';
 import { addStock } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { 
-    Box, Button, Card, Table, TableBody, TableCell, TableContainer, Tooltip,
-    TableHead, TableRow, Paper, Typography, MenuItem, Select, FormControl, InputLabel, Dialog, DialogTitle, DialogContent, DialogActions, TextField 
+    Box, Button, Card, Table, TableBody, TableCell, TableContainer, Tooltip, Snackbar,
+    TableHead, TableRow, Paper, Typography, MenuItem, Select, FormControl, InputLabel, Dialog, 
+    DialogTitle, DialogContent, DialogActions, TextField, FormLabel, RadioGroup, Radio, FormControlLabel,
+    Menu, Stack, Grid2 as Grid, InputAdornment
 } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import MuiAlert from '@mui/material/Alert';
+const Alert = React.forwardRef(function Alert(props, ref) {
+  return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
+});
 
 export default function PortfolioDashboard() {
     const [stocks, setStocks] = useState([]);  
@@ -25,16 +32,28 @@ export default function PortfolioDashboard() {
     const { user } = useAuth();
     const username = String(user?.username);
 
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState("");
+    const [snackbarSeverity, setSnackbarSeverity] = useState("success");
+
+    const showSnackbar = (msg, severity = "success") => {
+        setSnackbarMessage(msg);
+        setSnackbarSeverity(severity);
+        setSnackbarOpen(true);
+    };
+
+    const handleSnackbarClose = (event, reason) => {
+        if (reason === 'clickaway') return;
+        setSnackbarOpen(false);
+    };
+
     useEffect(() => {
         document.title = "Trading Portfolio"; // Change tab name
     }, []);
     
-    useEffect(() => {
-        if (!username) {
-            console.error("No username provided!");
-            return;
-        }
-
+    const fetchPortfolio = async () => {
         getPortfolio(username)
             .then(data => {
                 if (Array.isArray(data)) {
@@ -49,6 +68,11 @@ export default function PortfolioDashboard() {
                 setError("Failed to load portfolio data.");
                 setStocks([]);
             });
+        };
+    
+    
+    useEffect(() => {
+            if (username) fetchPortfolio();
     }, [username]);
 
     // Apply filtering when stocks or filterType changes
@@ -73,13 +97,18 @@ export default function PortfolioDashboard() {
         try {
             console.log("Adding trade:", tradeData);
             await addStock(tradeData);
-            alert("Trade added successfully!");
-            window.location.reload(); // Refresh data
+            showSnackbar("Trade added successfully!", "success");
+            fetchPortfolio(); // Refresh data
         } catch (error) {
             console.error("Error adding trade:", error);
-            alert("Failed to add trade.");
+            showSnackbar("Failed to add trade.", "error");
         }
     };
+
+    const displayedStocks = filteredStocks.filter(stock =>
+      stock.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
 
     const soldStocks = stocks.filter(stock => Number(stock.net_quantity) === 0);
     const totalInvestmentSold = soldStocks.reduce(
@@ -105,75 +134,159 @@ export default function PortfolioDashboard() {
         Number(val).toLocaleString('en-IN');
 
     return (
-        <Box sx={{ width: '80%', margin: '20px auto', textAlign: 'center' }}>
-            <Typography variant="h4" sx={{ marginBottom: '20px' }}>Portfolio</Typography>
+        <Box sx={{ width: '70%', margin: '20px auto', textAlign: 'center' }}>
+        <Box sx={{ pb: 3 }}>
+            {/* Upload & Manual Add Actions */}
+            <Card sx={{ p: 3, borderRadius: 3, boxShadow: 3, mb: 3 }}>
+                <Stack spacing={2} alignItems="center">
+                <Typography variant="h6" fontWeight="bold" align="center">
+                    Manage Your Portfolio
+                </Typography>
 
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '20px' }}>
-                <Button 
-                    variant="contained" 
-                    color="primary" 
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} width="100%">
+                    <Button
+                    fullWidth
+                    variant="contained"
+                    color="primary"
                     onClick={() => navigate('/upload')}
-                >
+                    >
                     Upload Trade/Dividend History
-                </Button>
-                <Button variant="contained" color="secondary" onClick={() => setOpen(true)}>Add New Stock Manually</Button>
-                <Dialog open={open} onClose={() => setOpen(false)}>
+                    </Button>
+
+                    <Button
+                    fullWidth
+                    variant="outlined"
+                    color="secondary"
+                    onClick={() => setOpen(true)}
+                    >
+                    Add New Stock Manually
+                    </Button>
+                </Stack>
+                </Stack>
+            </Card>
+
+            {/* Summary Card */}
+            <Card
+                sx={{
+                p: 3,
+                borderRadius: 3,
+                boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
+                border: '1px solid #1976d2',
+                mb: 3,
+                }}
+            >
+                <Typography variant="h6" gutterBottom>
+                Summary of {filterType === 'sold' ? 'Sold' : 'Active'} Stocks
+                </Typography>
+                <Typography>
+                <strong>Total Stocks:</strong> {filteredStocks.length}
+                </Typography>
+                {filterType === 'sold' ? (
+                <>
+                    <Typography display="inline">
+                    <strong>Total Profit/Loss:</strong>
+                    </Typography>
+                    <Typography display="inline" sx={{ color: totalProfitSold >= 0 ? 'green' : 'red', ml: 1 }}>
+                    {formatINR(totalProfitSold)}
+                    </Typography>
+                </>
+                ) : (
+                <Typography>
+                    <strong>Total Investment:</strong> {formatINR(totalInvestmentActive)}
+                </Typography>
+                )}
+            </Card>
+
+            {/* Add Stock Dialog */}
+            <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>Add Stock Manually</DialogTitle>
                 <DialogContent>
-                    <TextField label="Date" type="date" value={newDate} onChange={(e) => setTradeDate(e.target.value)} fullWidth margin="normal" InputLabelProps={{ shrink: true }} />
-                    <TextField label="Stock Symbol" type="text" value={newSymbol} onChange={(e) => setSymbol(e.target.value)} fullWidth margin="normal" />
-                    <TextField select label="Type" value={newType} onChange={(e) => setTradeType(e.target.value)} fullWidth margin="normal">
-                        <MenuItem value="BUY">BUY</MenuItem>
-                        <MenuItem value="SELL">SELL</MenuItem>
-                        <MenuItem value="DIVIDEND">DIVIDEND</MenuItem>
+                <Stack spacing={2} mt={1}>
+                    <TextField
+                    label="Date"
+                    type="date"
+                    value={newDate}
+                    onChange={(e) => setTradeDate(e.target.value)}
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    />
+                    <TextField
+                    label="Stock Symbol"
+                    value={newSymbol}
+                    onChange={(e) => setSymbol(e.target.value)}
+                    fullWidth
+                    />
+                    <TextField
+                    select
+                    label="Type"
+                    value={newType}
+                    onChange={(e) => setTradeType(e.target.value)}
+                    fullWidth
+                    >
+                    <MenuItem value="BUY">BUY</MenuItem>
+                    <MenuItem value="SELL">SELL</MenuItem>
+                    <MenuItem value="DIVIDEND">DIVIDEND</MenuItem>
                     </TextField>
-                    <TextField label="Quantity" type="number" value={newQuantity} onChange={(e) => setQuantity(e.target.value)} fullWidth margin="normal" />
-                    <TextField label="Price" type="number" value={newPrice} onChange={(e) => setPrice(e.target.value)} fullWidth margin="normal" />
+                    <TextField
+                    label="Quantity"
+                    type="number"
+                    value={newQuantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    fullWidth
+                    />
+                    <TextField
+                    label="Price"
+                    type="number"
+                    value={newPrice}
+                    onChange={(e) => setPrice(e.target.value)}
+                    fullWidth
+                    />
+                </Stack>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpen(false)} color="error" variant='outlined'>Cancel</Button>
-                    <Button onClick={handleSubmit} color="primary" variant="contained">Add Stock</Button>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                <Button onClick={() => setOpen(false)} color="error" variant="outlined">
+                    Cancel
+                </Button>
+                <Button onClick={handleSubmit} color="primary" variant="contained">
+                    Add Stock
+                </Button>
                 </DialogActions>
-                </Dialog>
-            </Box>
+            </Dialog>
 
-            {/* Filter Dropdown */}
-            <FormControl sx={{ minWidth: 200, marginBottom: '20px' }}>
-                <InputLabel>Filter Portfolio</InputLabel>
-                <Select
+            <Grid container spacing={5} alignItems="center" justifyContent="space-between">
+                <Grid item xs={12} sm={6}>
+                <TextField
+                    fullWidth
+                    variant="outlined"
+                    placeholder="Search stocks..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    autoComplete='off'
+                    InputProps={{
+                    startAdornment: (
+                        <InputAdornment position="start">
+                        <SearchIcon />
+                        </InputAdornment>
+                    ),
+                    }}
+                />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                    <InputLabel>Filter Portfolio</InputLabel>
+                    <Select
                     value={filterType}
-                    onChange={(event) => setFilterType(event.target.value)}
                     label="Filter Portfolio"
-                >
+                    onChange={(e) => setFilterType(e.target.value)}
+                    >
                     <MenuItem value="active">Active Stocks</MenuItem>
                     <MenuItem value="sold">Sold Stocks</MenuItem>
-                </Select>
-                
-
-            </FormControl>
-
-
-            {filterType === 'sold'? (
-            <Card sx={{ padding: 2, marginBottom: 2, textAlign: 'left', 
-                        boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)', 
-                        borderRadius: '8px', border: '1px solid #1976d2' }}>
-                <Typography variant="h6" gutterBottom>Summary of Sold Stocks</Typography>
-                <Typography><strong>Total Stocks:</strong> {filteredStocks.length}</Typography>
-                {/* <Typography><strong>Total Investment:</strong> ₹{totalInvestmentSold.toFixed(2)}</Typography> */}
-                 
-                    <Typography display="inline"><strong>Total Profit/Loss:</strong></Typography> 
-                    <Typography display="inline" sx={{color: totalProfitSold >=0 ? "green" : "red"}}> {formatINR(totalProfitSold)}</Typography>
-                
-            </Card>
-            ):(<Card sx={{ padding: 2, marginBottom: 2, textAlign: 'left', 
-                        boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)', 
-                        borderRadius: '8px', border: '1px solid #1976d2' }}>
-                <Typography variant="h6" gutterBottom>Summary of Active Stocks</Typography>
-                <Typography><strong>Total Stocks:</strong> {filteredStocks.length}</Typography>
-                <Typography><strong>Total Investment:</strong> {formatINR(totalInvestmentActive)}</Typography>
-            </Card>)}
-
-
+                    </Select>
+                </FormControl>
+                </Grid>
+            </Grid>
+            </Box>
 
             {filterType === 'active' ? (
             <TableContainer component={Paper} sx={{ boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)' }}>
@@ -187,7 +300,7 @@ export default function PortfolioDashboard() {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {filteredStocks.map((stock, index) => (
+                        {displayedStocks.map((stock, index) => (
                             <Tooltip
                             key={index}
                             title={stock.net_quantity < 0 ? "Please add the initial buy trade" : ""}
@@ -239,7 +352,7 @@ export default function PortfolioDashboard() {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {filteredStocks.map((stock, index) => (
+                        {displayedStocks.map((stock, index) => (
                             <TableRow 
                                 key={index} 
                                 hover
@@ -255,6 +368,19 @@ export default function PortfolioDashboard() {
                     </TableBody>
                 </Table>
             </TableContainer>}
+
+
+            <Snackbar
+                open={snackbarOpen}
+                autoHideDuration={4000}
+                onClose={handleSnackbarClose}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            >
+                <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} 
+                    sx={{ width: '120%',  fontSize: '16px'}}>
+                    {snackbarMessage}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }

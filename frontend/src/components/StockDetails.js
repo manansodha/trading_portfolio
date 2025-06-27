@@ -1,12 +1,22 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getStockDetails, addTrade, deleteTrade, temporaryXIRR} from '../services/api';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import StockFinancials from './FinancialData';
-import TradingViewWidget from './TradingView';
+import KeyboardBackspaceIcon from '@mui/icons-material/KeyboardBackspace';
+import AddIcon from '@mui/icons-material/Add';
 import {
+    Box,
+    Button,
+    DialogTitle,
+    DialogContent,
+    DialogActions, 
+    Dialog,
+    Fab,
+    MenuItem,
     Tab,
+    Paper,
     Tabs, 
     Table,
     TableBody,
@@ -14,17 +24,17 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    Paper,
+    Tooltip,
     Typography,
-    Box,
-    Button,
     TextField,
-    MenuItem,
-    DialogTitle,
-    DialogContent,
-    DialogActions, 
-    Dialog
+    Snackbar,
 } from "@mui/material";
+
+import MuiAlert from '@mui/material/Alert';
+
+const Alert = React.forwardRef(function Alert(props, ref) {
+  return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
+});
 
 export default function StockDetails() {
     const { symbol } = useParams();
@@ -50,22 +60,52 @@ export default function StockDetails() {
     const [price, setPrice] = useState("");
     const [tradeDate, setTradeDate] = useState("");
 
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [tradeToDelete, setTradeToDelete] = useState(null); // stores {id, symbol, type}
+
+
     // Temporary XIRR Calculation state
     const [sellPrice, setSellPrice] = useState("");
     const [sellDate, setSellDate] = useState("");
     const [tempXirrResult, setTempXirrResult] = useState(null);
     const [openXIRR, setOpenXIRR] = useState(false)
      
+    const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState("");
+    const [snackbarSeverity, setSnackbarSeverity] = useState("success");
+
+    const showSnackbar = (msg, severity = "success") => {
+        setSnackbarMessage(msg);
+        setSnackbarSeverity(severity);
+        setSnackbarOpen(true);
+    };
+
+    const handleSnackbarClose = (event, reason) => {
+        if (reason === 'clickaway') return;
+        setSnackbarOpen(false);
+    };
+
     useEffect(() => {
         document.title = symbol; // Change tab name
     }, [symbol]);
 
     useEffect(() => {
-        if (!username) {
-            console.error("No username provided!");
-            return;
-        }
+        if (tradeToDelete) setConfirmOpen(true);
+    }, [tradeToDelete]);
 
+    const formatINR = (val) =>
+        Number(val).toLocaleString('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 2,
+   });
+
+   const formatIn = (val) =>
+    Number(val).toLocaleString('en-IN');
+
+
+
+    const fetchStockDetails = () => {
         getStockDetails(symbol, username)
             .then(response => {
                 if (response.data.data && typeof response.data.data === 'object' && !Array.isArray(response.data.data)) {
@@ -73,7 +113,6 @@ export default function StockDetails() {
                 } else if (Array.isArray(response.data.data)) {
                     setTrades(response.data.data);
                 } else {
-                    console.error("Unexpected API response format:", response.data.data);
                     setTrades([]);
                 }
                 setTotalPnL(response.data.total_pnl ?? 0);
@@ -87,12 +126,17 @@ export default function StockDetails() {
                 console.error("Error in fetching stock details:", error);
                 setTrades([]);
             });
+    };
+
+    useEffect(() => {
+        if (username) fetchStockDetails();
     }, [symbol, username]);
+
 
     // Function to handle adding a trade
     const handleAddTrade = async () => {
         if (!quantity || !price || !tradeDate) {
-            alert("Please fill in all fields.");
+            showSnackbar("Please fill in all fields.", "warning");
             return;
         }
 
@@ -108,42 +152,45 @@ export default function StockDetails() {
         try {
             console.log("Adding trade:", tradeData);
             await addTrade(tradeData, symbol, username);
-            // alert("Trade added successfully!");
+            showSnackbar("Trade added successfully!", "success");
             setQuantity("");
             setPrice("");
             setTradeDate("");
-            window.location.reload(); // Refresh data
+            setOpen(false); // close dialog
+            fetchStockDetails();
         } catch (error) {
             console.error("Error adding trade:", error);
-            alert("Failed to add trade.");
+            showSnackbar("Failed to add trade.", "error");
         }
     };
 
-    const handleDeleteTrade = async (id, symbol, type) => {
+    const confirmDeleteTrade = async () => {
+        const { id, symbol, type } = tradeToDelete;
 
-        const tradeData = {
+        try {
+            await deleteTrade({
             username,
             symbol,
             trade_type: type.toUpperCase(),
             id: id,
-        };
-        console.log("Deleting trade:", tradeData);
-        if (!window.confirm("Are you sure you want to delete this trade?")) return;
-
-        try {
-            await deleteTrade(tradeData);
+            });
             setTrades(trades.filter(trade => trade.id !== id));
-            alert("Trade deleted successfully!");
-            window.location.reload(); 
+            showSnackbar("Trade deleted successfully!", "success");
         } catch (error) {
             console.error("Error deleting trade:", error);
+            showSnackbar("Failed to delete trade.", "error");
+        } finally {
+            setConfirmOpen(false);
+            setTradeToDelete(null);
+            fetchStockDetails();// optional
         }
-    };
+        };
+
 
     // Function to calculate temporary XIRR
     const handleCalculateXirr = async () => {
         if (!sellPrice || !sellDate) {
-            alert("Please enter sell price and date");
+            showSnackbar("Please enter sell price and date", "warning");
             return;
         }
         const sellData = {
@@ -158,7 +205,7 @@ export default function StockDetails() {
             setTempXirrResult(response.data);
         } catch (error) {
             console.error("Error calculating XIRR:", error);
-            alert("Failed to calculate XIRR");
+            showSnackbar("Failed to calculate XIRR", "error");
         }
     };
 
@@ -180,63 +227,37 @@ export default function StockDetails() {
 
 
     return (
-        <Box sx={{ p: 3, fontFamily: "Arial, sans-serif" }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: '20px', marginBottom: '20px' }}>
-            <Button variant="contained" align='left' onClick={() => navigate('/')}>
-                Back
-            </Button>
-            <Button variant="contained" align='right' color="primary" onClick={() => setOpen(true)}>
-                Add New Trade
-            </Button>
-            </Box>
-
-            <Typography variant="h4" align="center" gutterBottom>
+        <Box sx={{ p: 3, fontFamily: "Arial, sans-serif", width: '80%' , margin: 'auto' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems:'center' , gap: '20px', marginBottom: '20px' }}>
+            <Fab size="small" color="primary" align='left' onClick={() => navigate('/')}>
+                <KeyboardBackspaceIcon /> 
+            </Fab>
+            <Typography variant="h4" sx={{ fontWeight: 'bold', textAlign: 'left', flexGrow: 1 }}>
                 {symbol}
             </Typography>
-
-            {/* Summary Details */}
-            <Box sx={{ mt: 2, mb: 3, p: 2, display: 'flex', justifyContent: 'space-between', border: "1px solid #ddd", borderRadius: "8px", backgroundColor: "#f9f9f9" }}>
-                <Box sx={{display: 'flex', flexDirection: 'column'}}>
-                    {totalQuantity !== 0 ? (
-                        <Typography variant="h6" sx={{ color: totalPnL >= 0 ? "green" : "red" }}>
-                            Total Realised Gains: ₹{totalRG}
-                        </Typography>
-                    ) : (
-                        <Typography variant="h6" sx={{ color: totalPnL >= 0 ? "green" : "red" }}>
-                            Total PnL: ₹{totalPnL}
-                        </Typography>
-                    )}
-                    
-                    <Typography variant="h6" >
-                        Total Cost: ₹{totalCost}
-                    </Typography>
-                    <Typography variant="h6" >
-                        Dividend Earned: ₹{totalDividend}
-                    </Typography>
-                </Box>
-
-                <Box sx={{display: 'flex', flexDirection: 'column'}}>
-                <Typography variant="h6">Remaining Quantity: {totalQuantity}</Typography>
-                {xirr !== null ? (
-                    <Typography variant="h6" sx={{ color: "blue" }}>
-                        XIRR: {(xirr)}%
-                    </Typography>
-                ) : (
-                    <Typography variant="h6" sx={{ color: "red" }}>
-                        Insufficient data for XIRR
-                    </Typography>
-                )}
-                {totalQuantity !==0 ?
-                    (<Button variant="contained" align='right' color="primary" onClick={() => setOpenXIRR(true)}>
-                        Check Temporary XIRR
-                    </Button>):(null)}
-                </Box>
+            <Tooltip title="Add Trade" arrow placement='left' slotProps={{
+                                tooltip: {sx: {bgcolor: "black", color: "white", fontSize: '14px'},},
+                                arrow: {sx: {color: "black", },},
+                            }}>
+            <Fab size="small" align='right' color="primary" onClick={() => setOpen(true)}>
+                <AddIcon />
+            </Fab>   
+            </Tooltip>
             </Box>
 
 
-            {/* Tabs Section */}
+            {/* Summary Details */}
             <Box sx={{ width: '100%', mt: 4 }}>
+                
                 <Tabs value={tabValue} onChange={handleTabChange} centered variant="fullWidth">
+                    <Tab
+                        label="Stock Details"
+                        onMouseEnter={e => e.target.style.color = 'white'}
+                        onMouseLeave={e => e.target.style.color = ''}
+                        sx={{ 
+                            fontSize: '16px' 
+                        }}/>
+                    
                     <Tab
                         label="My Transactions"
                         onMouseEnter={e => e.target.style.color = 'white'}
@@ -245,17 +266,57 @@ export default function StockDetails() {
                             fontSize: '16px' 
                         }}
                     />
-                    <Tab
-                        label="Stock Details"
-                        onMouseEnter={e => e.target.style.color = 'white'}
-                        onMouseLeave={e => e.target.style.color = ''}
-                        sx={{ 
-                            fontSize: '16px' 
-                        }}/>
+                    
                 </Tabs>
+                
+            </Box>
 
-                {/* My Transactions Tab */}
-                {tabValue === 0 && (
+
+            {/* Tabs Section */}
+            <Box sx={{ width: '100%', mt: 4 }}>
+                
+                
+                
+                {tabValue === 1 && (
+                    
+                    <Box sx={{ width: '100%', mt: 4 }}>
+                        {/* My Transactions Tab */}
+                <Box sx={{ mt: 2, mb: 3, p: 2, display: 'flex', justifyContent: 'space-between', border: "1px solid #ddd", borderRadius: "8px", backgroundColor: "#f9f9f9" }}>
+                    <Box sx={{display: 'flex', flexDirection: 'column'}}>
+                        {totalQuantity !== 0 ? (
+                            <Typography variant="h6" sx={{ color: totalPnL >= 0 ? "green" : "red" }}>
+                                Total Realised Gains: {formatINR(totalRG)}
+                            </Typography>
+                        ) : (
+                            <Typography variant="h6" sx={{ color: totalPnL >= 0 ? "green" : "red" }}>
+                                Total PnL: {formatINR(totalPnL)}
+                            </Typography>
+                        )}
+                        
+                        <Typography variant="h6" >
+                            Total Cost: {formatINR(totalCost)}
+                        </Typography>
+                        <Typography variant="h6" >
+                            Dividend Earned: {formatINR(totalDividend)}
+                        </Typography>
+                    </Box>
+                    <Box sx={{display: 'flex', flexDirection: 'column'}}>
+                    <Typography variant="h6">Remaining Quantity: {totalQuantity}</Typography>
+                    {xirr !== null ? (
+                        <Typography variant="h6" sx={{ color: "blue" }}>
+                            XIRR: {formatIn(xirr)}%
+                        </Typography>
+                    ) : (
+                        <Typography variant="h6" sx={{ color: "red" }}>
+                            Insufficient data for XIRR
+                        </Typography>
+                    )}
+                    {totalQuantity !==0 ?
+                        (<Button variant="contained" align='right' color="primary" onClick={() => setOpenXIRR(true)}>
+                            Check Temporary XIRR
+                        </Button>):(null)}
+                    </Box>
+                </Box>
                     <TableContainer component={Paper} sx={{ mt: 3, boxShadow: 3 }}>
                         <Table>
                             <TableHead>
@@ -263,8 +324,8 @@ export default function StockDetails() {
                                     <TableCell align="center"><strong>Date</strong></TableCell>
                                     <TableCell align="center"><strong>Type</strong></TableCell>
                                     <TableCell align="center"><strong>Quantity</strong></TableCell>
-                                    <TableCell align="center"><strong>Average Cost (₹)</strong></TableCell>
-                                    <TableCell align="center"><strong>Total Cost (₹)</strong></TableCell>
+                                    <TableCell align="center"><strong>Average Cost</strong></TableCell>
+                                    <TableCell align="center"><strong>Total Cost</strong></TableCell>
                                     <TableCell align="center"><strong>Action</strong></TableCell>
                                 </TableRow>
                             </TableHead>
@@ -272,15 +333,29 @@ export default function StockDetails() {
                                 {trades.length > 0 ? (
                                     trades.map((trade) => (
                                         <TableRow key={trade.id} sx={{ backgroundColor: trades.indexOf(trade) % 2 === 0 ? "#f9f9f9" : "white" }}>
-                                            <TableCell align="center">{new Date(trade.date).toLocaleDateString()}</TableCell>
+                                            <TableCell align="center">{(() => {
+                                                    const d = new Date(trade.date);
+                                                    const day = String(d.getDate()).padStart(2, '0');
+                                                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                                                    const year = d.getFullYear();
+                                                    return `${day}/${month}/${year}`;
+                                                    })()}</TableCell>
                                             <TableCell align="center" sx={{ fontWeight: "bold", color: trade.trade_type.toUpperCase() === "BUY" ? "green" : "red" }}>
                                                 {trade.trade_type.toUpperCase()}
                                             </TableCell>
                                             <TableCell align="center">{trade.quantity || "-"}</TableCell>
-                                            <TableCell align="center">{trade.average_price ? `₹${parseFloat(trade.average_price).toFixed(2)}` : "-"}</TableCell>
-                                            <TableCell align="center">{trade.average_price ? `₹${(parseFloat(trade.average_price) * trade.quantity).toFixed(2)}` : "-"}</TableCell>
+                                            <TableCell align="center">{trade.average_price ? `${formatINR(parseFloat(trade.average_price).toFixed(2))}` : "-"}</TableCell>
+                                            <TableCell align="center">{trade.average_price ? `${formatINR((parseFloat(trade.average_price) * trade.quantity).toFixed(2))}` : "-"}</TableCell>
                                             <TableCell align="center">
-                                                <Button color="error" onClick={() => handleDeleteTrade(trade.id, trade.symbol, trade.trade_type)}>Delete</Button>
+                                                <Button
+                                                        color="error"
+                                                        onClick={() =>
+                                                            setTradeToDelete({ id: trade.id, symbol: trade.symbol, type: trade.trade_type })
+                                                        }
+                                                        >
+                                                        Delete
+                                                        </Button>
+
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -294,15 +369,14 @@ export default function StockDetails() {
                             </TableBody>
                         </Table>
                     </TableContainer>
+                    </Box>
                 )}
 
                 {/* Stock Details Tab */}
-                {tabValue === 1 && (
+                {tabValue === 0 && (
                     <Box sx={{ mt: 3, p: 3, backgroundColor: "#fafafa", borderRadius: "8px", boxShadow: 2 }}>
-                        <Box sx={{display: 'flex', flexDirection: 'column', gap: '50px', mb: 3}}>
-                        <StockFinancials symbol={symbol} />
-                        <TradingViewWidget symbol={symbol} />
-                        </Box>
+                        
+                            <StockFinancials symbol={symbol} />
                     </Box>
                 )}
             </Box>
@@ -355,13 +429,41 @@ export default function StockDetails() {
                     {tempXirrResult && (
                         <Box sx={{ mt: 2, p: 2, border: "1px solid #ccc", borderRadius: "8px", backgroundColor: "#fff" }}>
                             <Typography variant="h6">Results:</Typography>
-                            <Typography>Total Realisation: ₹{tempXirrResult.total_realisation}</Typography>
-                            <Typography sx={{color: tempXirrResult.profit >=0 ? "green" : "red"}}>Profit: ₹{tempXirrResult.profit}</Typography>
-                            <Typography>New XIRR: {tempXirrResult.new_xirr ? `${tempXirrResult.new_xirr}%` : "Insufficient Data"}</Typography>
+                            <Typography>Total Realisation: {formatINR(tempXirrResult.total_realisation)}</Typography>
+                            <Typography sx={{color: tempXirrResult.profit >=0 ? "green" : "red"}}>Profit: {formatINR(tempXirrResult.profit)}</Typography>
+                            <Typography>New XIRR: {tempXirrResult.new_xirr ? `${formatIn(tempXirrResult.new_xirr)}%` : "Insufficient Data"}</Typography>
                         </Box>
                     )}
                 </DialogTitle>
                 </Dialog>
+        <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={4000}
+            onClose={handleSnackbarClose}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+            <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} 
+                sx={{ width: '120%',  fontSize: '16px'}}>
+                {snackbarMessage}
+            </Alert>
+        </Snackbar>
+
+
+        <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogContent>
+                <Typography>Are you sure you want to delete this trade?</Typography>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => setConfirmOpen(false)} color="primary" variant="outlined">
+                    Cancel
+                </Button>
+                <Button onClick={confirmDeleteTrade} color="error" variant="contained">
+                    Delete
+                </Button>
+            </DialogActions>
+        </Dialog>
+
         </Box>
     );
 }

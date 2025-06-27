@@ -14,22 +14,17 @@ body {
   min-height: 100vh;
 }
 
-/* Header */
+
 .app-header {
+  display: flex;
+  justify-content: space-between; 
+  align-items: center;            
   width: 100%;
   background-color: #1a73e8;
   color: white;
-  padding: 15px 0;
-  text-align: center;
-  font-size: 1.5rem;
+  padding: 15px 30px;            
   font-weight: 600;
-}
-
-.user-info {
-  position: absolute;
-  right: 20px;
-  top: 15px;
-  font-size: 1rem;
+  box-sizing: border-box;         
 }
 
 .user-info span {

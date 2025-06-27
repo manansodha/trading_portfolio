@@ -147,7 +147,7 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, fname: user.fname },
+      { id: user.id, username: user.username, fname: user.fname, lname: user.lname },
       process.env.JWT_SECRET,
       { expiresIn: '30m' }
     );
@@ -163,7 +163,7 @@ exports.login = async (req, res) => {
         )
     `);
     applyAdjustments(username);
-    res.json({token, user: { id: user.id, username: user.username, fname: user.fname, role:user.role } });
+    res.json({token, user: { id: user.id, username: user.username, fname: user.fname, lname:user.lname, role:user.role } });
   } catch (error) {
 
     res.status(500).json({ error: 'Internal server error' });

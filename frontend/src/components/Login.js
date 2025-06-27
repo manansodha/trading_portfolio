@@ -56,6 +56,7 @@ const Login = () => {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            autoComplete='off'
           />
 
           <TextField

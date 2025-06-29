@@ -25,9 +25,15 @@ router.get('/fundamentals/:symbol', async (req, res) => {
 
 router.get('/details/:symbol', async (req, res) => {
   const rawSymbol = req.params.symbol.toUpperCase();
-  const symbol = rawSymbol.split('-')[0]; 
-  const bseSymbol = `${Symbol}.BO`;
-  const nseSymbol = `${Symbol}.NS`;
+  
+  if ('-' in rawSymbol) {
+  const symbol = rawSymbol.split('-')[0]; }
+  else {
+    var symbol = rawSymbol;
+  }
+  
+  const bseSymbol = `${symbol}.BO`;
+  const nseSymbol = `${symbol}.NS`;
 
   try {
       const result = await yahooFinance.quote(bseSymbol, { modules: ['financialData', 'summaryDetail'] });
@@ -40,7 +46,7 @@ router.get('/details/:symbol', async (req, res) => {
         return res.json({ source: 'NSE', data: result });
     } catch (errNS) {
       console.error(`NSE failed: ${errNS.message}`);
-      return res.status(404).json({ error: `Symbol ${Symbol} not found on NSE or BSE.` });
+      return res.status(404).json({ error: `Symbol ${symbol} not found on NSE or BSE.` });
     }
   }
 });

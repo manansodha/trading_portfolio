@@ -25,21 +25,22 @@ router.get('/fundamentals/:symbol', async (req, res) => {
 
 router.get('/details/:symbol', async (req, res) => {
   const rawSymbol = req.params.symbol.toUpperCase();
-  const nseSymbol = `${rawSymbol}.NS`;
-  const bseSymbol = `${rawSymbol}.BO`;
+  const symbol = rawSymbol.split('-')[0]; 
+  const bseSymbol = `${Symbol}.BO`;
+  const nseSymbol = `${Symbol}.NS`;
 
   try {
-    const result = await yahooFinance.quote(nseSymbol, { modules: ['financialData', 'summaryDetail'] });
-    
-    return res.json({ source: 'NSE', data: result });
-  } catch (errNS) {
-    console.warn(`NSE failed: ${errNS.message}`);
-    try {
       const result = await yahooFinance.quote(bseSymbol, { modules: ['financialData', 'summaryDetail'] });
       return res.json({ source: 'BSE', data: result });
-    } catch (errBO) {
-      console.error(`BSE failed: ${errBO.message}`);
-      return res.status(404).json({ error: `Symbol ${rawSymbol} not found on NSE or BSE.` });
+    
+  } catch (errBO) {
+    console.warn(`NSE failed: ${errNS.message}`);
+    try {
+        const result = await yahooFinance.quote(nseSymbol, { modules: ['financialData', 'summaryDetail'] });
+        return res.json({ source: 'NSE', data: result });
+    } catch (errNS) {
+      console.error(`NSE failed: ${errNS.message}`);
+      return res.status(404).json({ error: `Symbol ${Symbol} not found on NSE or BSE.` });
     }
   }
 });

@@ -26,12 +26,7 @@ router.get('/fundamentals/:symbol', async (req, res) => {
 router.get('/details/:symbol', async (req, res) => {
   const rawSymbol = req.params.symbol.toUpperCase();
   
-  if ('-' in rawSymbol) {
-  const symbol = rawSymbol.split('-')[0]; }
-  else {
-    var symbol = rawSymbol;
-  }
-  
+  let symbol = rawSymbol.includes('-') ? rawSymbol.split('-')[0] : rawSymbol;
   const bseSymbol = `${symbol}.BO`;
   const nseSymbol = `${symbol}.NS`;
 

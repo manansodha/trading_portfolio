@@ -2,6 +2,7 @@ const db = require('../utils/db');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const { table } = require('console');
 
 
 const applyAdjustments = async (username) => {
@@ -118,7 +119,32 @@ const applyAdjustments = async (username) => {
 //       console.error("Error applying stock adjustments:", error);
 //   }
 // };
+async function cleanSymbols(username) {
+  try {
+    const tableName = `portfolio_${username}`;
+    // Select all distinct symbols to review
+    const result = await db.query(`SELECT DISTINCT symbol FROM ${tableName} WHERE symbol IS NOT NULL AND symbol != ''`);
 
+    for (let row of result.rows) {
+      const originalSymbol = row.symbol;
+      
+      // Only process symbols with a dash
+      if (originalSymbol.includes('-')) {
+        const cleanedSymbol = originalSymbol.split('-')[0];
+
+        // Update the table
+        await db.query(
+          `UPDATE ${tableName} SET symbol = $1 WHERE symbol = $2`,
+          [cleanedSymbol, originalSymbol]
+        );
+
+        console.log(`Updated ${originalSymbol} ➝ ${cleanedSymbol}`);
+      }
+    }
+  }catch (error) {
+    console.error('Error cleaning symbols:', error);
+  }
+}
 
 exports.login = async (req, res) => {
   const { username, password } = req.body;
@@ -163,6 +189,8 @@ exports.login = async (req, res) => {
         )
     `);
     applyAdjustments(username);
+    cleanSymbols();
+
     res.json({token, user: { id: user.id, username: user.username, fname: user.fname, lname:user.lname, role:user.role } });
   } catch (error) {
 

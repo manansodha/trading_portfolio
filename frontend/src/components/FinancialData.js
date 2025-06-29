@@ -20,6 +20,7 @@ const StockFinancials = ({ symbol }) => {
   const [fundamentals, setFundamentals] = useState();
   const [details, setDetails] = useState();
   const [loading, setLoading] = useState(true);
+  
 
   useEffect(() => {
     const fetchData = async () => {

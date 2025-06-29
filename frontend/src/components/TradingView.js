@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from 'react';
 
 const TradingViewWidget = ({ symbol }) => {
   const containerRef = useRef(null);
+  let tradeSymbol = symbol.includes('-') ? symbol.split('-')[0] : symbol;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -16,7 +17,7 @@ const TradingViewWidget = ({ symbol }) => {
         new window.TradingView.widget({
           width: "100%",
           height: 500,
-          symbol: `BSE:${symbol}`,  // Example: NSE:INFY
+          symbol: `BSE:${tradeSymbol}`,  // Example: NSE:INFY
           interval: "D",
           timezone: "Asia/Kolkata",
           theme: "dark",
@@ -28,17 +29,17 @@ const TradingViewWidget = ({ symbol }) => {
           "show_popup_button": true,
           "popup_width": "1000",
           "popup_height": "650",
-          container_id: `tradingview_${symbol}`,
+          container_id: `tradingview_${tradeSymbol}`,
         });
       }
     };
 
     containerRef.current.appendChild(script);
-  }, [symbol]);
+  }, [tradeSymbol]);
 
   return (
     <div ref={containerRef}>
-      <div id={`tradingview_${symbol}`} />
+      <div id={`tradingview_${tradeSymbol}`} />
     </div>
   );
 };

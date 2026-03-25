@@ -146,7 +146,7 @@ exports.login = async (req, res) => {
     applyAdjustments(username);
     cleanSymbols();
 
-    res.json({token, user: { id: user.id, username: user.username, fname: user.fname, lname:user.lname, role:user.role } });
+    res.json({token, user: { id: user.id, username: user.username, fname: user.fname, lname:user.lname, user:user.user } });
   } catch (error) {
 
     res.status(500).json({ error: 'Internal server error' });
@@ -172,7 +172,7 @@ exports.register = async (req, res) => {
 
     // Insert the new user
    await db.execute(
-      'INSERT INTO users (id, fname, lname, username, password, role) VALUES ($1, $2, $3, $4, $5, $6)',
+      'INSERT INTO users (id, fname, lname, username, password, user) VALUES ($1, $2, $3, $4, $5, $6)',
       [userId, fname, lname, username, hashedPassword, 'user']
     );
 

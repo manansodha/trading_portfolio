@@ -281,7 +281,7 @@ export default function StockDetails() {
                     
                     <Box sx={{ width: '100%', mt: 4 }}>
                         {/* My Transactions Tab */}
-                <Box sx={{ mt: 2, mb: 3, p: 2, display: 'flex', justifyContent: 'space-between', border: "1px solid #ddd", borderRadius: "8px", backgroundColor: "#f9f9f9" }}>
+                    <Box sx={{ mt: 2, mb: 3, p: 2, display: 'flex', justifyContent: 'space-between', border: "1px solid #ddd", borderRadius: "8px", backgroundColor: "#f9f9f9" }}>
                     <Box sx={{display: 'flex', flexDirection: 'column'}}>
                         {totalQuantity !== 0 ? (
                             <Typography variant="h6" sx={{ color: totalPnL >= 0 ? "green" : "red" }}>
@@ -375,7 +375,6 @@ export default function StockDetails() {
                 {/* Stock Details Tab */}
                 {tabValue === 0 && (
                     <Box sx={{ mt: 3, p: 3, backgroundColor: "#fafafa", borderRadius: "8px", boxShadow: 2 }}>
-                        
                             <StockFinancials symbol={symbol} />
                     </Box>
                 )}

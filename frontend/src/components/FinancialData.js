@@ -14,7 +14,7 @@ import {
   Box,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { Padding } from '@mui/icons-material';
+
 
 const StockFinancials = ({ symbol }) => {
   const [fundamentals, setFundamentals] = useState();

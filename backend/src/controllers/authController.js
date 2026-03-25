@@ -32,6 +32,10 @@ const applyAdjustments = async (username) => {
                       `UPDATE portfolio_${username} SET symbol = $1 WHERE symbol = $2`,
                       [adj.new_symbol, adj.symbol]
                   );
+                  await db.execute(
+                      `UPDATE dividend_${username} SET symbol = $1 WHERE symbol = $2`,
+                      [adj.new_symbol, adj.symbol]
+                  );
               }
 
               if (adj.split_ratio) {
@@ -65,60 +69,7 @@ const applyAdjustments = async (username) => {
       console.error("Error applying stock adjustments:", error);
   }
 };
-// const applyAdjustments = async (username) => {
-//   try {
-//       const adjustments = await db.execute(`SELECT * FROM stock_adjustments`);
-//       console.log('Adjustments:', adjustments);
 
-//       if (username!='admin1'){for (let adj of adjustments) {
-//           // Check if this adjustment was already applied
-//           const exists = await db.execute(
-//               `SELECT * FROM user_adjustments_applied WHERE username = ? AND adjustment_id = ?`,
-//               [username, adj.id]
-//           );
-
-//           if (exists.length > 0) {
-//               console.log(`Adjustment ${adj.id} already applied for ${username}`);
-//               continue; // Skip if already applied
-//           }
-
-//           if (adj.new_symbol) {
-//               await db.execute(
-//                   `UPDATE portfolio_${username} SET symbol = ? WHERE symbol = ?`,
-//                   [adj.new_symbol, adj.symbol]
-//               );
-//           }
-
-//           if (adj.split_ratio) {
-//               await db.execute(
-//                   `UPDATE portfolio_${username} 
-//                   SET quantity = quantity * ?, average_price = average_price / ? 
-//                   WHERE symbol = ? AND date < ?`,
-//                   [adj.split_ratio, adj.split_ratio, adj.symbol, adj.date]
-//               );
-//           }
-
-//           if (adj.bonus_ratio) {
-//             await db.execute(
-//                 `UPDATE portfolio_${username} 
-//                 SET 
-//                     quantity = quantity * (1 + ?),  
-//                     average_price = average_price / (1 + ?)  
-//                 WHERE symbol = ? AND date < ?`,
-//                 [adj.bonus_ratio, adj.bonus_ratio, adj.symbol, adj.date] 
-//             );
-//         }        
-
-//           // Mark adjustment as applied
-//           await db.execute(
-//               `INSERT INTO user_adjustments_applied (username, adjustment_id) VALUES (?, ?)`,
-//               [username, adj.id]
-//           );}
-//       }
-//   } catch (error) {
-//       console.error("Error applying stock adjustments:", error);
-//   }
-// };
 async function cleanSymbols(username) {
   try {
     const tableName = `portfolio_${username}`;
@@ -135,6 +86,10 @@ async function cleanSymbols(username) {
         // Update the table
         await db.query(
           `UPDATE ${tableName} SET symbol = $1 WHERE symbol = $2`,
+          [cleanedSymbol, originalSymbol]
+        );
+        await db.query(
+          `UPDATE dividend_${username} SET symbol = $1 WHERE symbol = $2`,
           [cleanedSymbol, originalSymbol]
         );
 

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const dns = require('dns');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
@@ -10,6 +11,8 @@ const getStockDetails = require('./src/routes/portfolioRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 
 const app = express();
+// Render/Supabase environments may return IPv6 first; prefer IPv4 to avoid ENETUNREACH.
+dns.setDefaultResultOrder('ipv4first');
 app.use(cors({ origin: process.env.FRONTEND, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

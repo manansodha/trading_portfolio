@@ -26,7 +26,6 @@ const db = {
         if (!['postgres:', 'postgresql:'].includes(parsedUrl.protocol) || !parsedUrl.hostname) {
           throw new Error('Invalid DATABASE_URL/DB_URL protocol or hostname. Expected postgresql://...');
         }
-        console.log(connectionString)
         this.client = postgres(connectionString, {
           max: Number(process.env.DB_MAX_CONNECTIONS || 10),
           idle_timeout: Number(process.env.DB_IDLE_TIMEOUT_SECONDS || 30),

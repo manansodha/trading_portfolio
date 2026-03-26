@@ -23,7 +23,8 @@ const db = {
     }
 
     try {
-      const result = await this.sql(query, params);
+      // postgres.js requires tagged templates; use unsafe for parameterized raw SQL strings.
+      const result = await this.sql.unsafe(query, params);
       return result;
     } catch (error) {
       console.error('Database query error:', error);

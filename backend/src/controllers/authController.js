@@ -74,9 +74,9 @@ async function cleanSymbols(username) {
   try {
     const tableName = `portfolio_${username}`;
     // Select all distinct symbols to review
-    const result = await db.query(`SELECT DISTINCT symbol FROM ${tableName} WHERE symbol IS NOT NULL AND symbol != ''`);
+    const rows = await db.execute(`SELECT DISTINCT symbol FROM ${tableName} WHERE symbol IS NOT NULL AND symbol != ''`);
 
-    for (let row of result.rows) {
+    for (let row of rows) {
       const originalSymbol = row.symbol;
       
       // Only process symbols with a dash
@@ -84,11 +84,11 @@ async function cleanSymbols(username) {
         const cleanedSymbol = originalSymbol.split('-')[0];
 
         // Update the table
-        await db.query(
+        await db.execute(
           `UPDATE ${tableName} SET symbol = $1 WHERE symbol = $2`,
           [cleanedSymbol, originalSymbol]
         );
-        await db.query(
+        await db.execute(
           `UPDATE dividend_${username} SET symbol = $1 WHERE symbol = $2`,
           [cleanedSymbol, originalSymbol]
         );
@@ -144,9 +144,9 @@ exports.login = async (req, res) => {
         )
     `);
     applyAdjustments(username);
-    cleanSymbols();
+    cleanSymbols(username);
 
-    res.json({token, user: { id: user.id, username: user.username, fname: user.fname, lname:user.lname, user:user.user } });
+    res.json({token, user: { id: user.id, username: user.username, fname: user.fname, lname:user.lname, user:user.role } });
   } catch (error) {
 
     res.status(500).json({ error: 'Internal server error' });
@@ -172,7 +172,7 @@ exports.register = async (req, res) => {
 
     // Insert the new user
    await db.execute(
-      'INSERT INTO users (id, fname, lname, username, password, user) VALUES ($1, $2, $3, $4, $5, $6)',
+      'INSERT INTO users (id, fname, lname, username, password, role) VALUES ($1, $2, $3, $4, $5, $6)',
       [userId, fname, lname, username, hashedPassword, 'user']
     );
 
@@ -207,7 +207,8 @@ exports.register = async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
 
-    if (error.code === 'ER_DUP_ENTRY') {
+    // PostgreSQL unique_violation error code is 23505
+    if (error.code === '23505') {
       return res.status(400).json({ error: 'Username already taken. Please choose a different one.' });
     }
 

@@ -23,11 +23,13 @@ const Login = () => {
     e.preventDefault();
     try {
       const success = await login({username, password});
-      const user = JSON.parse(localStorage.getItem('user'))
-      if (success && user.role === 'admin') {
+      const user = JSON.parse(localStorage.getItem('user'));
+      const role = user?.role || user?.user;
+
+      if (success && role === 'admin') {
         setMessage('Login successful! Redirecting to admin dashboard...');
         setTimeout(() => navigate('/admin'), 500);
-      } else if (success && user.role === 'user') {
+      } else if (success && role === 'user') {
         setMessage('Login successful! Redirecting to dashboard...');
         setTimeout(() => navigate('/portfolio'), 500);
       } else {

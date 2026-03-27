@@ -123,6 +123,7 @@ exports.login = async (req, res) => {
     // console.log('Fetched user:', user); 
 
     const passwordMatch = await bcrypt.compare(password, user.password);
+    
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -146,7 +147,7 @@ exports.login = async (req, res) => {
     applyAdjustments(username);
     cleanSymbols(username);
 
-    res.json({token, user: { id: user.id, username: user.username, fname: user.fname, lname:user.lname, user:user.role } });
+    res.json({ token, user: { id: user.id, username: user.username, fname: user.fname, lname: user.lname, role: user.role } });
   } catch (error) {
 
     res.status(500).json({ error: 'Internal server error' });

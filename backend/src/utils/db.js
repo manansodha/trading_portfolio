@@ -10,6 +10,7 @@ const db = {
     try {
       const connectionString = process.env.DATABASE_URL;
       this.sql = postgres(connectionString);
+      await this.sql`SELECT 1`;
       console.log('PostgreSQL database connection established');
     } catch (error) {
       console.error('Database initialization error:', error);

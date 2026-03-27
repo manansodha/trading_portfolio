@@ -250,13 +250,13 @@ export default function StockDetails() {
             <Box sx={{ width: '100%', mt: 4 }}>
                 
                 <Tabs value={tabValue} onChange={handleTabChange} centered variant="fullWidth">
-                    <Tab
+                    {/* <Tab
                         label="Stock Details"
                         onMouseEnter={e => e.target.style.color = 'white'}
                         onMouseLeave={e => e.target.style.color = ''}
                         sx={{ 
                             fontSize: '16px' 
-                        }}/>
+                        }}/> */}
                     
                     <Tab
                         label="My Transactions"
@@ -277,7 +277,7 @@ export default function StockDetails() {
                 
                 
                 
-                {tabValue === 1 && (
+                {tabValue === 0 && (
                     
                     <Box sx={{ width: '100%', mt: 4 }}>
                         {/* My Transactions Tab */}
@@ -373,7 +373,7 @@ export default function StockDetails() {
                 )}
 
                 {/* Stock Details Tab */}
-                {tabValue === 0 && (
+                {tabValue === 1 && (
                     <Box sx={{ mt: 3, p: 3, backgroundColor: "#fafafa", borderRadius: "8px", boxShadow: 2 }}>
                             <StockFinancials symbol={symbol} />
                     </Box>

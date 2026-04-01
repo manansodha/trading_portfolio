@@ -13,15 +13,20 @@ import {
   Divider,
   Stack,
   CardHeader,
-  Snackbar
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
 import MuiAlert from '@mui/material/Alert';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
 // import LinkIcon from '@mui/icons-material/Link';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { deleteAccount, changePassword } from '../services/api';
 
 const Alert = React.forwardRef(function Alert(props, ref) {
   return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
@@ -50,11 +55,15 @@ const ProfileSettings = () => {
     useEffect(() => {
         document.title = 'Profile'; // Change tab name
     });
-    const { user } = useAuth();
-    const navigate = useNavigate();
+    const { user, logout } = useAuth();
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState("");
     const [snackbarSeverity, setSnackbarSeverity] = useState("success");
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const requiredDeletePhrase = 'delete my account ' + user?.username ;
 
     const showSnackbar = (msg, severity = "success") => {
         setSnackbarMessage(msg);
@@ -65,6 +74,43 @@ const ProfileSettings = () => {
     const handleSnackbarClose = (event, reason) => {
         if (reason === 'clickaway') return;
         setSnackbarOpen(false);
+    };
+
+    const openDeleteDialog = () => {
+      setDeleteConfirmationText('');
+      setDeleteDialogOpen(true);
+    };
+
+    const closeDeleteDialog = () => {
+      if (isDeleting) return;
+      setDeleteDialogOpen(false);
+      setDeleteConfirmationText('');
+    };
+
+    const handleDeleteAccount = async () => {
+      if (deleteConfirmationText.trim() !== requiredDeletePhrase) {
+        showSnackbar(`Please type '${requiredDeletePhrase}' to confirm.`, 'warning');
+        return;
+      }
+
+      if (!user?.username) {
+        showSnackbar('Unable to delete account: username is missing.', 'error');
+        return;
+      }
+
+      try {
+        setIsDeleting(true);
+        await deleteAccount({ username: user.username });
+        showSnackbar('Your account has been deleted.', 'success');
+        setDeleteDialogOpen(false);
+        setDeleteConfirmationText('');
+        logout();
+      } catch (error) {
+        const message = error?.response?.data?.message || 'Unable to delete account right now. Please try again.';
+        showSnackbar(message, 'error');
+      } finally {
+        setIsDeleting(false);
+      }
     };
 
   return (
@@ -151,7 +197,33 @@ const ProfileSettings = () => {
                     showSnackbar("Please fill all fields.", 'warning');
                     return;
                 }
-                console.log("Password update submitted:", userData);
+                if (userData.currentPassword === userData.newPassword) {
+                    showSnackbar("New password cannot be the same as current password.", 'error');
+                    return;
+                }
+                if (!user?.username) {
+                    showSnackbar("Unable to change password: username is missing.", 'error');
+                    return;
+                }
+
+                changePassword({
+                  username: user.username,
+                  oldPassword: userData.currentPassword,
+                  newPassword: userData.newPassword
+                })
+                  .then(() => {
+                    showSnackbar("Password changed successfully.", 'success');
+                    setUserData({
+                      ...userData,
+                      currentPassword: '',
+                      newPassword: '',
+                      confirmPassword: ''
+                    });
+                  })
+                  .catch((error) => {
+                    const message = error?.response?.data?.error || 'Failed to change password.';
+                    showSnackbar(message, 'error');
+                  });
                 
                 }}
             >
@@ -252,7 +324,12 @@ const ProfileSettings = () => {
                   This action is irreversible.
                 </Typography>
               </Box>
-              <Button variant="contained" color="error" startIcon={<DeleteIcon />}>
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={openDeleteDialog}
+              >
                 Delete
               </Button>
             </Box>
@@ -261,6 +338,40 @@ const ProfileSettings = () => {
         </Paper>
       </Grid>
       </Grid>
+
+    <Dialog
+      open={deleteDialogOpen}
+      onClose={closeDeleteDialog}
+      fullWidth
+      maxWidth="sm"
+    >
+      <DialogTitle color="error">Confirm Account Deletion</DialogTitle>
+      <DialogContent>
+        <DialogContentText sx={{ mb: 2 }}>
+          This action is permanent and cannot be undone. To confirm, type &quot;{requiredDeletePhrase}&quot; below.
+        </DialogContentText>
+        <TextField
+          fullWidth
+          autoFocus
+          label="Type confirmation phrase"
+          value={deleteConfirmationText}
+          onChange={(e) => setDeleteConfirmationText(e.target.value)}
+          onPaste={(e) => e.preventDefault()}
+          disabled={isDeleting}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={closeDeleteDialog} disabled={isDeleting}>Cancel</Button>
+        <Button
+          color="error"
+          variant="contained"
+          onClick={handleDeleteAccount}
+          disabled={deleteConfirmationText.trim() !== requiredDeletePhrase || isDeleting}
+        >
+          {isDeleting ? 'Deleting...' : 'Delete Account'}
+        </Button>
+      </DialogActions>
+    </Dialog>
 
     <Snackbar
         open={snackbarOpen}

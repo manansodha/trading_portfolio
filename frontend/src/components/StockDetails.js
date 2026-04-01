@@ -3,7 +3,7 @@ import { getStockDetails, addTrade, deleteTrade, temporaryXIRR} from '../service
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import StockFinancials from './FinancialData';
+// import StockFinancials from './FinancialData';
 import KeyboardBackspaceIcon from '@mui/icons-material/KeyboardBackspace';
 import AddIcon from '@mui/icons-material/Add';
 import {
@@ -250,13 +250,6 @@ export default function StockDetails() {
             <Box sx={{ width: '100%', mt: 4 }}>
                 
                 <Tabs value={tabValue} onChange={handleTabChange} centered variant="fullWidth">
-                    {/* <Tab
-                        label="Stock Details"
-                        onMouseEnter={e => e.target.style.color = 'white'}
-                        onMouseLeave={e => e.target.style.color = ''}
-                        sx={{ 
-                            fontSize: '16px' 
-                        }}/> */}
                     
                     <Tab
                         label="My Transactions"
@@ -267,6 +260,13 @@ export default function StockDetails() {
                         }}
                     />
                     
+                    <Tab
+                        label="Stock Details"
+                        onMouseEnter={e => e.target.style.color = 'white'}
+                        onMouseLeave={e => e.target.style.color = ''}
+                        sx={{ 
+                            fontSize: '16px' 
+                        }}/>
                 </Tabs>
                 
             </Box>
@@ -374,8 +374,13 @@ export default function StockDetails() {
 
                 {/* Stock Details Tab */}
                 {tabValue === 1 && (
-                    <Box sx={{ mt: 3, p: 3, backgroundColor: "#fafafa", borderRadius: "8px", boxShadow: 2 }}>
-                            <StockFinancials symbol={symbol} />
+                    // <Box sx={{ mt: 3, p: 3, backgroundColor: "#fafafa", borderRadius: "8px", boxShadow: 2 }}>
+                    //         <StockFinancials symbol={symbol} />
+                    // </Box>
+                     <Box sx={{ mt: 3, p: 3, backgroundColor: "#fafafa", borderRadius: "8px", boxShadow: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px', cursor: 'pointer' }} onClick={() => showSnackbar("Financial details coming soon!", "info")}>
+                        <Typography variant="h6" sx={{ color: "gray" }}>
+                            Financial details coming soon!
+                        </Typography>
                     </Box>
                 )}
             </Box>

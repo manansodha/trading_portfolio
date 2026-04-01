@@ -12,6 +12,37 @@ export const registerUser = async (userData) => {
     throw error;
   }
 };
+export const deleteAccount = async (userData) => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/api/auth/delete-account`,
+      { username: userData.username },
+      { withCredentials: true }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting account:', error.response ? error.response.data : error.message);
+    throw error;
+  }
+};
+
+export const changePassword = async (userData) => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/api/auth/change-password`,
+      {
+        username: userData.username,
+        oldPassword: userData.oldPassword,
+        newPassword: userData.newPassword,
+      },
+      { withCredentials: true }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error changing password:', error.response ? error.response.data : error.message);
+    throw error;
+  }
+};
 
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL,

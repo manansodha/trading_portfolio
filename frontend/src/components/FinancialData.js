@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { getFinancialDetails, getFinancialFundamentals } from '../services/api';
+import { getFinancialDetails } from '../services/api';
 import CandlestickChartIcon from '@mui/icons-material/CandlestickChart';
-import ShowChartIcon from '@mui/icons-material/ShowChart';
-import BarChartIcon from '@mui/icons-material/BarChart';
-import PaidIcon from '@mui/icons-material/Paid';
 import TradingViewWidget from './TradingView';
 import {
   Typography,
@@ -17,7 +14,6 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 
 const StockFinancials = ({ symbol }) => {
-  const [fundamentals, setFundamentals] = useState();
   const [details, setDetails] = useState();
   const [loading, setLoading] = useState(true);
   
@@ -27,8 +23,6 @@ const StockFinancials = ({ symbol }) => {
       try {
         const response = await getFinancialDetails(symbol);
         setDetails(response.data);
-        const fundResponse = await getFinancialFundamentals(symbol);
-        setFundamentals(fundResponse.data.financialData);
       } catch (err) {
         console.error('Failed to load financials', err);
       } finally {
@@ -45,15 +39,17 @@ const StockFinancials = ({ symbol }) => {
       maximumFractionDigits: 2,
     });
 
-  const formatCr = (val) =>
-    val !== undefined && val !== null ? `${(val / 1e7).toFixed(2)} Cr` : 'NA';
+  const formatDelta = (val) => {
+    if (val === undefined || val === null) return 'NA';
+    const sign = val >= 0 ? '+' : '';
+    return `${sign}${val.toFixed(2)}`;
+  };
 
-  const safeVal = (val, percent = false) =>
-    val !== undefined && val !== null
-      ? percent
-        ? `${(val).toFixed(2)}%`
-        : val.toFixed(2)
-      : 'NA';
+  const formatPercent = (val) => {
+    if (val === undefined || val === null) return 'NA';
+    const sign = val >= 0 ? '+' : '';
+    return `${sign}${val.toFixed(2)}%`;
+  };
 
   if (loading) return <CircularProgress sx={{ mx: 'auto', mt: 4, display: 'block' }} />;
 
@@ -64,35 +60,86 @@ const StockFinancials = ({ symbol }) => {
     <Box sx={{ width: '100%' }}>
       {!details?.longName === false ? (
         <>
-          <Typography variant="h5" fontWeight="bold" textAlign="center" mb={2}>
-            {details?.longName} ({symbol})
-          </Typography>
-
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: '#f0f0f0' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <ShowChartIcon/>
-                <Typography variant="h6" fontWeight="bold">Market Overview</Typography>
+          <Box
+            sx={{
+              mt: 1,
+              mb: 2,
+              p: { xs: 2, md: 2.5 },
+              backgroundColor: '#f7f9fc',
+              border: '1px solid #d7dfec',
+              borderRadius: '12px',
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2.5, gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 1.5 }}>
+                <Typography variant="h5" sx={{ color: '#1f2a44', fontWeight: 700, fontSize: '1.5rem' }}>
+                  {symbol}
+                </Typography>
+                <Typography variant="h5" sx={{ color: '#1f2a44', fontWeight: 700, fontSize: '1.5rem' }}>
+                  {formatINR(details.regularMarketPrice)}
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: details.regularMarketChange >= 0 ? '#22c55e' : '#ff1744',
+                    fontWeight: 700,
+                    fontSize: '1.25rem',
+                  }}
+                >
+                  {formatDelta(details.regularMarketChange)} ({formatPercent(details.regularMarketChangePercent)})
+                </Typography>
               </Box>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Typography>LTP: {formatINR(details.regularMarketPrice)}</Typography>
-              <Typography sx={{ color: details.regularMarketChange >= 0 ? 'green' : 'red' }}>
-                Change: {formatINR(details.regularMarketChange)} ({safeVal(details.regularMarketChangePercent, true)})
+              <Typography sx={{ color: '#6b7b97', fontSize: '0.9rem' }}>
+                {details.exchange || 'NSE'}
               </Typography>
-              <Typography>Prev Close: {formatINR(details.regularMarketPreviousClose)}</Typography>
-              <Typography>Open: {formatINR(details.regularMarketOpen)}</Typography>
-              <Typography>Day Range: {formatINR(details.regularMarketDayLow)} - {formatINR(details.regularMarketDayHigh)}</Typography>
-              <Typography>Volume: {details.regularMarketVolume?.toLocaleString()}</Typography>
-              <Typography>3M Avg Volume: {details.averageDailyVolume3Month?.toLocaleString()}</Typography>
-              <Typography>52W Range: {formatINR(details.fiftyTwoWeekLow)} - {formatINR(details.fiftyTwoWeekHigh)}</Typography>
-              <Typography>52W Change: {safeVal(details.fiftyTwoWeekChangePercent, true)}</Typography>
-              <Typography>Last Updated: {new Date(details.regularMarketTime).toLocaleString()}</Typography>
-            </AccordionDetails>
-          </Accordion>
+            </Box>
+
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
+                rowGap: 2,
+                columnGap: 2,
+              }}
+            >
+              <Box>
+                <Typography sx={{ color: '#6b7b97', fontSize: '0.9rem' }}>LTP</Typography>
+                <Typography sx={{ color: '#1f2a44', fontSize: '1.45rem', fontWeight: 700 }}>{formatINR(details.regularMarketPrice)}</Typography>
+              </Box>
+              <Box>
+                <Typography sx={{ color: '#6b7b97', fontSize: '0.9rem' }}>Volume</Typography>
+                <Typography sx={{ color: '#1f2a44', fontSize: '1.45rem', fontWeight: 700 }}>{details.regularMarketVolume?.toLocaleString('en-IN') || 'NA'}</Typography>
+              </Box>
+              <Box>
+                <Typography sx={{ color: '#6b7b97', fontSize: '0.9rem' }}>Open</Typography>
+                <Typography sx={{ color: '#1f2a44', fontSize: '1.45rem', fontWeight: 700 }}>{formatINR(details.regularMarketOpen)}</Typography>
+              </Box>
+              <Box>
+                <Typography sx={{ color: '#6b7b97', fontSize: '0.9rem' }}>Prev Close</Typography>
+                <Typography sx={{ color: '#1f2a44', fontSize: '1.45rem', fontWeight: 700 }}>{formatINR(details.regularMarketPreviousClose)}</Typography>
+              </Box>
+
+              <Box>
+                <Typography sx={{ color: '#6b7b97', fontSize: '0.9rem' }}>Day High</Typography>
+                <Typography sx={{ color: '#1f2a44', fontSize: '1.45rem', fontWeight: 700 }}>{formatINR(details.regularMarketDayHigh)}</Typography>
+              </Box>
+              <Box>
+                <Typography sx={{ color: '#6b7b97', fontSize: '0.9rem' }}>Day Low</Typography>
+                <Typography sx={{ color: '#1f2a44', fontSize: '1.45rem', fontWeight: 700 }}>{formatINR(details.regularMarketDayLow)}</Typography>
+              </Box>
+              <Box>
+                <Typography sx={{ color: '#6b7b97', fontSize: '0.9rem' }}>52W High</Typography>
+                <Typography sx={{ color: '#1f2a44', fontSize: '1.45rem', fontWeight: 700 }}>{formatINR(details.fiftyTwoWeekHigh)}</Typography>
+              </Box>
+              <Box>
+                <Typography sx={{ color: '#6b7b97', fontSize: '0.9rem' }}>52W Low</Typography>
+                <Typography sx={{ color: '#1f2a44', fontSize: '1.45rem', fontWeight: 700 }}>{formatINR(details.fiftyTwoWeekLow)}</Typography>
+              </Box>
+            </Box>
+          </Box>
 
           {/* Financial Summary */}
-          <Accordion>
+          {/* <Accordion>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: '#f7f7f7'}}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <PaidIcon />
@@ -108,10 +155,10 @@ const StockFinancials = ({ symbol }) => {
               <Typography>50 Day Avg: {formatINR(details.fiftyDayAverage)}</Typography>
               <Typography>200 Day Avg: {formatINR(details.twoHundredDayAverage)}</Typography>
             </AccordionDetails>
-          </Accordion>
+          </Accordion> */}
 
           {/* Key Financials */}
-          <Accordion>
+          {/* <Accordion>
             <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: '#fcfcfc' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <BarChartIcon/>
@@ -126,19 +173,13 @@ const StockFinancials = ({ symbol }) => {
               <Typography>Return on Equity: {safeVal(fundamentals?.returnOnEquity, true)}</Typography>
               <Typography>Debt/Equity: {fundamentals?.debtToEquity ?? 'NA'}</Typography>
             </AccordionDetails>
-          </Accordion>
+          </Accordion> */}
 
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: '#f7f7f7' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CandlestickChartIcon sx={{margin:"auto"}}/>
-                <Typography variant="h6" fontWeight="bold">Interactive Chart</Typography>
-              </Box>
-            </AccordionSummary>
-            <AccordionDetails>
+       
+              
+            
               <TradingViewWidget symbol={symbol} />
-            </AccordionDetails>
-          </Accordion>
+            
         </>
       ) : (
         <Typography variant="h6" color="error" textAlign="center">

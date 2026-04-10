@@ -220,3 +220,56 @@ exports.register = async (req, res) => {
 exports.logout = async (req, res) => {
   res.json({ message: 'Logout successful' });
 };
+
+exports.deleteAccount = async (req, res) => {
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
+  // Allow only safe table suffix characters before interpolating table names.
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    return res.status(400).json({ error: 'Invalid username format' });
+  }
+
+  try {
+    await db.execute('DELETE FROM users WHERE username = $1', [username]);
+    await db.execute(`DROP TABLE IF EXISTS portfolio_${username}`);
+    await db.execute(`DROP TABLE IF EXISTS dividend_${username}`);
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  const { username, oldPassword, newPassword } = req.body;
+
+  if (!username || !oldPassword || !newPassword) {
+    return res.status(400).json({ error: 'Username, old password, and new password are required' });
+  }
+
+  if (oldPassword === newPassword) {
+    return res.status(400).json({ error: 'New password cannot be the same as old password' });
+  }
+
+  try {
+    const rows = await db.execute('SELECT * FROM users WHERE username = $1', [username]);
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const user = rows[0];
+    const passwordMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Old password is incorrect' });
+    }
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    await db.execute('UPDATE users SET password = $1 WHERE username = $2', [hashedNewPassword, username]);
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+};
